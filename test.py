@@ -179,7 +179,7 @@ class DICOMViewer:
         contrast_scale_label = ttk.Label(info_frame, text="Contrast Adjustment")
         contrast_scale_label.pack(pady=5)
 
-        contrast_scale = Scale(info_frame, from_=0, to=10,resolution=0.01, orient="horizontal", length=200, command=lambda value: self.adjust_contrast(value, ax, canvas))
+        contrast_scale = Scale(info_frame, from_=0, to=255,resolution=0.01, orient="horizontal", length=200, command=lambda value: self.adjust_contrast(value, ax, canvas))
         contrast_scale.set(127)  # Set initial value
         contrast_scale.pack(pady=10)
         
