@@ -181,6 +181,7 @@ class DICOMViewer:
         contrast_scale = Scale(info_frame, from_=-100, to=50, orient="horizontal", length=175, resolution=0.01, command=lambda value: self.adjust_contrast(float(value), ax, canvas))
         contrast_scale.set(-25)  # Set initial value
         contrast_scale.pack(pady=10)
+       
         #place widjet
         self.canvas_widget.pack(side=tk.BOTTOM, expand=True, padx=5, pady=5,anchor="sw",fill="x")
         self.toggle_drag_button.pack(side=tk.LEFT, padx=5, pady=5,anchor="nw",fill="both",expand=False)
@@ -192,7 +193,7 @@ class DICOMViewer:
         dashed_line_button.pack(side=tk.LEFT, padx=5, pady=5,anchor="nw",fill="both",expand=False)
         single_arrow_button.pack(side=tk.LEFT, padx=5, pady=5,anchor="nw",fill="both",expand=False)
         self.rotate_flip_button.pack(side=tk.LEFT, padx=5, pady=5,anchor="nw",fill="both",expand=False)
-        
+
     def show_rotate_flip_menu(self):
         # Create a menu for rotate and flip options
         rotate_flip_menu = Menu(self.master, tearoff=0)
