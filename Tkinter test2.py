@@ -1,49 +1,24 @@
-import tkinter as tk
-from tkinter import ttk
+import cv2
+import numpy as np
 
+# Read the DICOM image using OpenCV
+image = cv2.imread(r'C:\Users\Admin\Desktop\TG\TEST\img\HN001\case1_008.dcm', cv2.IMREAD_UNCHANGED)
 
-class App(tk.Tk):
-    def __init__(self):
-        super().__init__()
-        self.geometry("320x80")
-        self.title('Tkinter OptionMenu Widget')
+# Check if the image is read correctly
+if image is None:
+    print("Error: Could not read the DICOM image.")
+    exit()
 
-        # initialize data
-        self.languages = ('Python', 'JavaScript', 'Java',
-                        'Swift', 'GoLang', 'C#', 'C++', 'Scala')
+# Create an array of zeros of the same size as the DICOM image
+zero_array = np.zeros_like(image)
 
-        # set up variable
-        self.option_var = tk.StringVar(self)
+# Set the brightness adjustment parameters
+alpha = 1.5  # To increase brightness (you can adjust this value as per your requirement)
+beta = 0
+gamma = 0
 
-        # create widget
-        self.create_wigets()
+# Adjust the brightness using addWeighted function
+adjusted_image = cv2.addWeighted(image, alpha, zero_array, beta, gamma)
 
-    def create_wigets(self):
-        # padding for widgets using the grid layout
-        paddings = {'padx': 5, 'pady': 5}
-
-        # label
-        label = ttk.Label(self,  text='Select your most favorite language:')
-        label.grid(column=0, row=0, sticky=tk.W, **paddings)
-
-        # option menu
-        option_menu = ttk.OptionMenu(
-            self,
-            self.option_var,
-            self.languages[0],
-            *self.languages,
-            command=self.option_changed)
-
-        option_menu.grid(column=1, row=0, sticky=tk.W, **paddings)
-
-        # output label
-        self.output_label = ttk.Label(self, foreground='red')
-        self.output_label.grid(column=0, row=1, sticky=tk.W, **paddings)
-
-    def option_changed(self, *args):
-        self.output_label['text'] = f'You selected: {self.option_var.get()}'
-
-
-if __name__ == "__main__":
-    app = App()
-    app.mainloop()
+# Save or display the adjusted image
+cv2.imwrite('adjusted_dicom_image.dcm', adjusted_image)

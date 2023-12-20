@@ -212,7 +212,6 @@ class DICOMViewer:
 
 
         #place widjet
-        
         self.canvas_widget.pack(side=tk.BOTTOM, expand=True, padx=5, pady=5,anchor="sw",fill="x")
         self.toggle_drag_button.pack(side=tk.LEFT, padx=5, pady=5,anchor="nw",expand=False)
         next_button.pack(side=tk.LEFT, padx=5, pady=5,anchor="nw",expand=False)

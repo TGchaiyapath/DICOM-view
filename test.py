@@ -167,20 +167,10 @@ class DICOMViewer:
         # Connect the mouse click and release events to the drawing function
         self.cid_press = None
         self.cid_release = None
-         # Create a frame to display DICOM information
-        info_frame = tk.Frame(image_window)
-        info_frame.pack(side=tk.RIGHT, padx=10, pady=10, fill=tk.Y)
-
-        # ... (Your existing code)
-
-        # Scale widget for contrast adjustment
-        contrast_scale_label = tk.Label(info_frame, text="Contrast Adjustment")
-        contrast_scale_label.pack(pady=5)
-
-        # Use a small positive resolution for log scale behavior
-        contrast_scale = Scale(info_frame, from_=-100, to=50, orient="horizontal", length=175, resolution=0.01, command=lambda value: self.adjust_contrast(float(value), ax, canvas))
-        contrast_scale.set(-25)  # Set initial value
-        contrast_scale.pack(pady=10)
+        self.brightness_scale = Scale(image_window, from_=0, to_=255, orient="horizontal", label="Brightness", command=self.adjust_brightness)
+        self.brightness_scale.set(128)  # Set an initial brightness value (e.g., 128)
+        self.brightness_scale.pack(pady=10)
+        
         #place widjet
         self.canvas_widget.pack(side=tk.BOTTOM, expand=True, padx=5, pady=5,anchor="sw",fill="x")
         self.toggle_drag_button.pack(side=tk.LEFT, padx=5, pady=5,anchor="nw",fill="both",expand=False)
@@ -192,7 +182,7 @@ class DICOMViewer:
         dashed_line_button.pack(side=tk.LEFT, padx=5, pady=5,anchor="nw",fill="both",expand=False)
         single_arrow_button.pack(side=tk.LEFT, padx=5, pady=5,anchor="nw",fill="both",expand=False)
         self.rotate_flip_button.pack(side=tk.LEFT, padx=5, pady=5,anchor="nw",fill="both",expand=False)
-        
+
     def show_rotate_flip_menu(self):
         # Create a menu for rotate and flip options
         rotate_flip_menu = Menu(self.master, tearoff=0)
@@ -543,30 +533,7 @@ class DICOMViewer:
             except Exception as e:
                 # Display an error message if there is an issue
                 self.error_label.config(text=f"Error: {str(e)}")
-    def adjust_contrast(self, value, ax, canvas):
-        # Adjust contrast based on the scale widget value
-        if self.file_paths:
-            try:
-                # Read the DICOM file
-                dicom_data = pydicom.dcmread(self.file_paths[self.current_index]).pixel_array
-
-                # Normalize pixel values to the range [0, 255]
-                dicom_data = (dicom_data / np.max(dicom_data) * 255).astype(np.uint8)
-
-                # Apply contrast adjustment
-                # Use np.power(10, value / 127.0) to convert logarithmic scale to linear scale
-                adjusted_image = cv2.convertScaleAbs(dicom_data, alpha=float(np.power(1000, (value / 127.0))))
-
-                ax.clear()
-                ax.imshow(adjusted_image, cmap=plt.cm.gray)
-                ax.axis('off')  # Hide the axes
-                canvas.draw()
-
-                # Clear error message
-                self.error_label.config(text="")
-            except Exception as e:
-                # Display an error message if there is an issue
-                self.error_label.config(text=f"Error: {str(e)}")
+    
     
 
 
