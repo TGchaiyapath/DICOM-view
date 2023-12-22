@@ -573,9 +573,9 @@ class DICOMViewer:
             except Exception as e:
                 # Display an error message if there is an issue
                 self.error_label.config(text=f"Error: {str(e)}")
-    
+     
 
-#main
+#mainxa
 if __name__ == "__main__":
     root = tk.Window(themename="yeti")
     root.geometry("900x800")
