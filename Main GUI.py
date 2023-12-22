@@ -1,12 +1,13 @@
 import os
-import ttkbootstrap as tk
-from ttkbootstrap.constants import *
 import pydicom
 import matplotlib.pyplot as plt
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 import numpy as np
 from tkinter import Listbox, Menu
 from PIL import Image, ImageTk
+from tkinter import filedialog
+import ttkbootstrap as tk
+from ttkbootstrap.constants import *
 import cv2
 from tkinter import Scale
 
@@ -22,7 +23,10 @@ class DICOMViewer:
         self.is_flipped_horizontal = False  # Variable to track the horizontal flip state
         self.is_flipped_vertical = False 
         self.rotation_angle = 0  # Variable to track the rotation angle
-
+        self.rotate_flip_button = None  # Add this line
+        # Browse button
+        self.browse_button = tk.Button(self.master, text="Browse", command=self.browse_directory)
+        self.browse_button.pack(side=tk.LEFT, pady=10)
         # Labels for HN (Hospital Number) and Accession
         self.hn_label = tk.Label(self.master, text="HN (Hospital Number):")
         self.hn_label.pack(pady=5)
@@ -44,6 +48,23 @@ class DICOMViewer:
         # Label for displaying error messages
         self.error_label = tk.Label(self.master, text="")
         self.error_label.pack(pady=5)
+    
+    def browse_directory(self):
+        # Open a file dialog to select a directory
+        selected_directory = filedialog.askdirectory()
+
+        # Update the Entry widget with the selected directory path
+        self.hospital_number.set(os.path.basename(selected_directory))
+
+        # Load DICOM files from the selected directory
+        self.file_paths = [os.path.join(selected_directory, file) for file in os.listdir(selected_directory) if file.endswith('.dcm')]
+
+        if self.file_paths:
+            self.current_index = 0
+            self.update_entry()
+            self.create_image_window()
+        else:
+            self.error_label.config(text=f"No DICOM files found in directory: {selected_directory}")
 
     def load_dicom_from_directory(self, event):
         # Event handler for pressing Enter in the HN Entry box
@@ -70,90 +91,80 @@ class DICOMViewer:
         # Create a new window to display the DICOM image with next, previous, zoom in, and zoom out buttons
         image_window = tk.Toplevel(self.master)
         image_window.title("DICOM Image Viewer")
-        image_window.geometry("900x800")
+        image_window.geometry("950x700")
         image_window.state("zoomed")
-
         # Matplotlib figure for displaying the image in the new window
-        self.fig, ax = plt.subplots(figsize=(7, 7.5))
+        self.fig, ax = plt.subplots(figsize=(7, 7))
         canvas = FigureCanvasTkAgg(self.fig, master=image_window)
-        self.canvas_widget = canvas.get_tk_widget()
-
+        self.canvas_widget = canvas.get_tk_widget()  # Fix here
+        
         # Load the DICOM image in the new window    
         self.load_dicom_image_internal(ax, canvas)
-
-        # Create a frame to display DICOM information
-        info_frame = tk.Frame(image_window)
-        info_frame.pack(side=tk.RIGHT, padx=10, pady=10, fill=tk.Y)
-
-        # Add labels for DICOM information
-        info_label = tk.Label(info_frame, text="DICOM Information", font=('Helvetica', 12, 'bold'))
-        info_label.pack(pady=10)
-
-        # Create a Listbox to display DICOM tags
-        info_listbox = Listbox(info_frame, height=20, width=30)
-        info_listbox.pack()
-
-        # Load DICOM tags into the Listbox
-        self.load_dicom_tags(info_listbox)
-
-        # Bind event to update DICOM information when navigating between images
-        image_window.bind("<Right>", lambda event: self.update_dicom_info(info_listbox))
-        image_window.bind("<Left>", lambda event: self.update_dicom_info(info_listbox))
-
 
         # Button to toggle drag functionality
         self.toggle_drag_button = tk.Button(image_window, text="Toggle Drag", command=self.toggle_drag)
         
-
+        
         # Next and Previous buttons in the new window
         next_button = tk.Button(image_window, text="Next", command=lambda: self.show_next(ax, canvas))
+        
         image_window.bind("<Right>", lambda event: self.show_next(ax, canvas))
         prev_button = tk.Button(image_window, text="Previous", command=lambda: self.show_previous(ax, canvas))
+        
         image_window.bind("<Left>", lambda event: self.show_previous(ax, canvas))
 
-        # Load a zoom in icon image
-        ZM_icon_path = os.path.abspath(r"C:\Users\Admin\Desktop\TG\TEST\icon\zoom-in.png")  
-        icon_ZM = tk.PhotoImage(file=ZM_icon_path)
+                # Load a zoom in icon image with a relative path
+        zoom_in_icon_path = os.path.abspath("icon/zoom-in.png")  # Adjust the folder structure as needed
+        icon_ZM = tk.PhotoImage(file=zoom_in_icon_path)
         self.zoom_in_icon = icon_ZM.subsample(27, 27)
 
         # Zoom in button with icon
-        zoom_in_button = tk.Button(image_window, command=lambda: self.zoom_in(ax, canvas), image=self.zoom_in_icon, )
+        zoom_in_button = tk.Button(image_window, command=lambda: self.zoom_in(ax, canvas), image=self.zoom_in_icon)
+        
         image_window.bind("<Key-z>", lambda event: self.zoom_in(ax, canvas))
 
-        # Load a zoom out icon image
-        ZO_icon_path = os.path.abspath(r"C:\Users\Admin\Desktop\TG\TEST\icon\magnifying-glass.png")  
-        icon_ZO = tk.PhotoImage(file=ZO_icon_path)
+        # Load a zoom out icon image with a relative path
+        zoom_out_icon_path = os.path.abspath("icon/magnifying-glass.png")  # Adjust the folder structure as needed
+        icon_ZO = tk.PhotoImage(file=zoom_out_icon_path)
         self.zoom_out_icon = icon_ZO.subsample(27, 27)
-        #Zoom out button
-        zoom_out_button = tk.Button(image_window, command=lambda: self.zoom_out(ax, canvas),image=self.zoom_out_icon)
+
+        # Zoom out button
+        zoom_out_button = tk.Button(image_window, command=lambda: self.zoom_out(ax, canvas), image=self.zoom_out_icon)
         image_window.bind("<Key-x>", lambda event: self.zoom_out(ax, canvas))
-        
-        # Load a straight icon image
-        straight_icon_path = os.path.abspath(r"C:\Users\Admin\Desktop\TG\TEST\icon\shape.png")  
+
+        # Load a straight icon image with a relative path
+        straight_icon_path = os.path.abspath("icon/shape.png")  # Adjust the folder structure as needed
         icon_ST = tk.PhotoImage(file=straight_icon_path)
         self.straight_icon = icon_ST.subsample(27, 27)
-        # Add drawing tool button in the new window
-        straight_line_button = tk.Button(image_window, command=lambda: self.activate_straight_line(ax, canvas),image=self.straight_icon)
-    
 
-        # Load a dashe icon image
-        dashed_icon_path = os.path.abspath(r"C:\Users\Admin\Desktop\TG\TEST\icon\dashed line.png")  
+        # Add drawing tool button in the new window
+        straight_line_button = tk.Button(image_window, command=lambda: self.activate_straight_line(ax, canvas), image=self.straight_icon)
+        
+
+        # Load a dashed icon image with a relative path
+        dashed_icon_path = os.path.abspath("icon/dashed line.png")  # Adjust the folder structure as needed
         icon_D = tk.PhotoImage(file=dashed_icon_path)
         self.dashed_icon = icon_D.subsample(27, 27)
-        #dash line button
-        dashed_line_button = tk.Button(image_window, command=lambda: self.activate_dashed_line(ax, canvas),image=self.dashed_icon)
 
-        # Load a dashe icon image
-        arrow_icon_path = os.path.abspath(r"C:\Users\Admin\Desktop\TG\TEST\icon\up-right-arrow.png")  
+        # Dash line button
+        dashed_line_button = tk.Button(image_window, command=lambda: self.activate_dashed_line(ax, canvas), image=self.dashed_icon)
+        
+
+        # Load an arrow icon image with a relative path
+        arrow_icon_path = os.path.abspath("icon/right-arrow.png")  # Adjust the folder structure as needed
         icon_AR = tk.PhotoImage(file=arrow_icon_path)
         self.arrow_icon = icon_AR.subsample(27, 27)
+        
         #arrow
         single_arrow_button = tk.Button(image_window, command=lambda: self.activate_single_ended_arrow(ax, canvas),image=self.arrow_icon            )
+        
+             
+        # Rotate/Flip button in the new window
+        rotate_flip_button = tk.Button(image_window, text="Rotate/Flip", command=self.show_rotate_flip_menu)
         
 
         # Display the menu at the button location in the image window
         self.rotate_flip_button = tk.Button(image_window, text="Rotate/Flip", command=self.show_rotate_flip_menu)
-        contrast_button = tk.Button(image_window, command=lambda: self.contrast_adjustment(ax, canvas),text="contrast")
         
         # Variable for tracking whether dragging is enabled
         self.drag_enabled = True
@@ -168,62 +179,58 @@ class DICOMViewer:
         # Connect the mouse click and release events to the drawing function
         self.cid_press = None
         self.cid_release = None
-         # Create a frame to display DICOM information
+        # Listbox to display DICOM tags
+        tags_listbox = Listbox(image_window, selectbackground='lightgray', selectmode=tk.SINGLE, height=10, width=30)
+        
+
+        # Load DICOM tags into the Listbox
+        self.load_dicom_tags(tags_listbox)
+
+        # Function to update Listbox when a new image is displayed
+        def update_tags_listbox(ax, canvas):
+            tags_listbox.delete(0, tk.END)  # Clear existing items
+            self.load_dicom_tags(tags_listbox)  # Load DICOM tags for the current image
+
+        # Bind the update function to the canvas redraw event
+        canvas.mpl_connect('draw_event', lambda event: update_tags_listbox(ax, canvas))
+
+        # Connect the mouse click and release events to the drawing function
+        self.cid_press = None
+        self.cid_release = None
+        # Create a frame to display DICOM information
         info_frame = tk.Frame(image_window)
-        info_frame.pack(side=tk.RIGHT, padx=10, pady=10, fill=tk.Y)
-
-        # ... (Your existing code)
-
+        
         # Scale widget for contrast adjustment
         contrast_scale_label = tk.Label(info_frame, text="Contrast Adjustment")
-        contrast_scale_label.pack(pady=5)
-
-        contrast_scale = Scale(info_frame, from_=0, to=255,resolution=0.01, orient="horizontal", length=200, command=lambda value: self.adjust_contrast(value, ax, canvas))
-        contrast_scale.set(127)  # Set initial value
-        contrast_scale.pack(pady=10)
+        contrast_scale = Scale(info_frame, from_=-100, to=50, orient="horizontal", length=200, resolution=0.01, command=lambda value: self.adjust_contrast(float(value), ax, canvas))
+        contrast_scale.set(-25)  # Set initial value
+        # Scale widget for contrast adjustment
+        brightness_scale_label = tk.Label(info_frame, text="Brightness Adjustment")
+        brightness_scale = Scale(info_frame, from_=-255, to=255, resolution=0.01, orient="horizontal", length=200, command=lambda value: self.adjust_brightness(value, ax, canvas))
+        brightness_scale.set(1.0)  # Set initial value
         
-       
+
+
+
         #place widjet
         self.canvas_widget.pack(side=tk.BOTTOM, expand=True, padx=5, pady=5,anchor="sw",fill="x")
-        self.toggle_drag_button.pack(side=tk.LEFT, padx=5, pady=5,anchor="nw",fill="both",expand=False)
-        next_button.pack(side=tk.LEFT, padx=5, pady=5,anchor="nw",fill="both",expand=False)
-        prev_button.pack(side=tk.LEFT, padx=5, pady=5,anchor="nw",fill="both",expand=False)
-        zoom_in_button.pack(side=tk.LEFT, padx=5, pady=5,anchor="nw",fill="both",expand=False)
-        zoom_out_button.pack(side=tk.LEFT, padx=5, pady=5,anchor="nw",fill="both",expand=False)
-        straight_line_button.pack(side=tk.LEFT, padx=5, pady=5,anchor="nw",fill="both",expand=False)
-        dashed_line_button.pack(side=tk.LEFT, padx=5, pady=5,anchor="nw",fill="both",expand=False)
-        single_arrow_button.pack(side=tk.LEFT, padx=5, pady=5,anchor="nw",fill="both",expand=False)
-        self.rotate_flip_button.pack(side=tk.LEFT, padx=5, pady=5,anchor="nw",fill="both",expand=False)
-        contrast_button.pack(side=tk.LEFT, padx=5, pady=5,anchor="nw",fill="both",expand=False)
+        self.toggle_drag_button.pack(side=tk.LEFT, padx=5, pady=5,anchor="nw",expand=False)
+        next_button.pack(side=tk.LEFT, padx=5, pady=5,anchor="nw",expand=False)
+        prev_button.pack(side=tk.LEFT, padx=5, pady=5,anchor="nw",expand=False)
+        zoom_in_button.pack(side=tk.LEFT, padx=5, pady=5,anchor="nw",expand=False)
+        zoom_out_button.pack(side=tk.LEFT, padx=5, pady=5,anchor="nw",expand=False)
+        straight_line_button.pack(side=tk.LEFT, padx=5, pady=5,anchor="nw",expand=False)
+        dashed_line_button.pack(side=tk.LEFT, padx=5, pady=5,anchor="nw",expand=False)
+        single_arrow_button.pack(side=tk.LEFT, padx=5, pady=5,anchor="nw",expand=False)
+        self.rotate_flip_button.pack(side=tk.LEFT, padx=5, pady=5,anchor="nw",expand=False)
+        tags_listbox.pack(side=tk.RIGHT, padx=10, pady=10, fill=tk.Y)
+        info_frame.pack(side=tk.RIGHT, padx=10, pady=10, fill=tk.Y)
+        contrast_scale_label.pack(pady=5)
+        contrast_scale.pack(pady=10)
+        brightness_scale_label.pack(pady=5)
+        brightness_scale.pack(pady=10)
 
-
-
-
-
-
-
-
-    
-
-    def show_rotate_flip_menu(self):
-        # Create a menu for rotate and flip options
-        rotate_flip_menu = Menu(self.master, tearoff=0)
-
-        # Add rotation options to the menu
-        rotate_menu = Menu(rotate_flip_menu, tearoff=0)
-        rotate_menu.add_command(label="Clockwise", command=lambda: self.rotate_image(clockwise=True))
-        rotate_menu.add_command(label="Counterclockwise", command=lambda: self.rotate_image(clockwise=False))
-        rotate_flip_menu.add_cascade(label="Rotate", menu=rotate_menu)
-
-        # Add flip options to the menu
-        flip_menu = Menu(rotate_flip_menu, tearoff=0)
-        flip_menu.add_command(label="Horizontal", command=lambda: self.flip_image(horizontal=True))
-        flip_menu.add_command(label="Vertical", command=lambda: self.flip_image(vertical=True))
-        rotate_flip_menu.add_cascade(label="Flip", menu=flip_menu)
-
-        # Display the menu just below the button
-        self.rotate_flip_button.update()
-        rotate_flip_menu.post(self.rotate_flip_button.winfo_rootx(), self.rotate_flip_button.winfo_rooty() + self.rotate_flip_button.winfo_height())
+ 
     def show_rotate_flip_menu(self):
         # Create a menu for rotate and flip options
         rotate_flip_menu = Menu(self.master, tearoff=0)
@@ -260,19 +267,7 @@ class DICOMViewer:
                 self.cid_release = None
         else:
             self.toggle_drag_button.config(text="Enable Drag")
-    def reconnect_events(self):
-        # Reconnect events for dragging and drawing
-        self.canvas_widget.bind("<ButtonPress-1>", self.on_press)
-        self.canvas_widget.bind("<B1-Motion>", lambda event: self.on_drag(event, self.fig.axes[0], self.canvas_widget))
-        self.canvas_widget.bind("<ButtonRelease-1>", lambda event: self.on_release(event, self.fig.axes[0], self.canvas_widget))
 
-    def normalize_image(self, image):
-        # Normalize pixel values to the range [0, 255]
-        min_val = np.min(image)
-        max_val = np.max(image)
-        normalized_image = 255.0 * (image - min_val) / (max_val - min_val)
-        normalized_image = normalized_image.astype(np.uint8)
-        return normalized_image
     def on_press(self, event):
         if self.drag_enabled:
             # Update the starting point for the drag operation
@@ -291,8 +286,7 @@ class DICOMViewer:
             ax.set_xlim(ax.get_xlim()[0] - deltax, ax.get_xlim()[1] - deltax)
             ax.set_ylim(ax.get_ylim()[0] - deltay, ax.get_ylim()[1] - deltay)
             canvas.draw()
-        
-
+    
     
     def rotate_image(self, clockwise=True):
         if self.file_paths:
@@ -373,7 +367,21 @@ class DICOMViewer:
             except Exception as e:
                 # Display an error message if there is an issue
                 self.error_label.config(text=f"Error: {str(e)}")
-    
+
+    def reconnect_events(self):
+        # Reconnect events for dragging and drawing
+        self.canvas_widget.bind("<ButtonPress-1>", self.on_press)
+        self.canvas_widget.bind("<B1-Motion>", lambda event: self.on_drag(event, self.fig.axes[0], self.canvas_widget))
+        self.canvas_widget.bind("<ButtonRelease-1>", lambda event: self.on_release(event, self.fig.axes[0], self.canvas_widget))
+
+    def normalize_image(self, image):
+        # Normalize pixel values to the range [0, 255]
+        min_val = np.min(image)
+        max_val = np.max(image)
+        normalized_image = 255.0 * (image - min_val) / (max_val - min_val)
+        normalized_image = normalized_image.astype(np.uint8)
+        return normalized_image
+
     def load_dicom_image_internal(self, ax, canvas):
         if self.file_paths:
             try:
@@ -382,7 +390,7 @@ class DICOMViewer:
 
                 # Display the image using matplotlib
                 ax.clear()
-                ax.imshow(dicom_data.pixel_array, cmap=plt.cm.gray, aspect='auto')  # Set aspect='auto'
+                ax.imshow(dicom_data.pixel_array, cmap=plt.cm.gray)
                 ax.axis('off')  # Hide the axes
                 canvas.draw()
 
@@ -390,19 +398,11 @@ class DICOMViewer:
                 accession_number = dicom_data.get("AccessionNumber", "N/A")
                 self.accession_number.set(accession_number)
 
-                # Set aspect ratio and adjust axes limits
-                canvas_widget_width = self.canvas_widget.winfo_width()
-                canvas_widget_height = self.canvas_widget.winfo_height()
-                aspect_ratio = canvas_widget_width / canvas_widget_height
-                ax.set_aspect(aspect_ratio)
-                ax.autoscale()
-                
                 # Clear error message
                 self.error_label.config(text="")
             except Exception as e:
                 # Display an error message if there is an issue
                 self.error_label.config(text=f"Error: {str(e)}")
-
 
     def show_next(self, ax, canvas):
         if self.file_paths and self.current_index < len(self.file_paths) - 1:
@@ -555,6 +555,34 @@ class DICOMViewer:
             except Exception as e:
                 # Display an error message if there is an issue
                 self.error_label.config(text=f"Error: {str(e)}")
+
+    def adjust_brightness(self, value, ax, canvas):
+        # Adjust contrast based on the scale widget value using cv2.equalizeHist
+        if self.file_paths:
+            try:
+                # Read the DICOM file
+                dicom_data = pydicom.dcmread(self.file_paths[self.current_index]).pixel_array
+
+                # Normalize pixel values to the range [0, 255]
+                dicom_data = (dicom_data / np.max(dicom_data) * 255).astype(np.uint8)
+
+                if float(value) >= 0:
+                    bright_image = cv2.add(dicom_data, float(value) )
+                else:
+                    bright_image = cv2.subtract(dicom_data, -float(value))
+                
+  
+                ax.clear()
+                ax.imshow(bright_image, cmap=plt.cm.gray)
+                ax.axis('off')  # Hide the axes
+                canvas.draw()
+             
+                # Clear error message
+                self.error_label.config(text="")
+            except Exception as e:
+                # Display an error message if there is an issue
+                self.error_label.config(text=f"Error: {str(e)}")
+
     def adjust_contrast(self, value, ax, canvas):
         # Adjust contrast based on the scale widget value
         if self.file_paths:
@@ -566,7 +594,8 @@ class DICOMViewer:
                 dicom_data = (dicom_data / np.max(dicom_data) * 255).astype(np.uint8)
 
                 # Apply contrast adjustment
-                adjusted_image = cv2.convertScaleAbs(dicom_data, alpha=float(value) / 127.0)
+                # Use np.power(10, value / 127.0) to convert logarithmic scale to linear scale
+                adjusted_image = cv2.convertScaleAbs(dicom_data, alpha=float(np.power(800, (value / 127.0))))
 
                 ax.clear()
                 ax.imshow(adjusted_image, cmap=plt.cm.gray)
@@ -578,12 +607,10 @@ class DICOMViewer:
             except Exception as e:
                 # Display an error message if there is an issue
                 self.error_label.config(text=f"Error: {str(e)}")
-    
-
-
-# MAIN window
+#main
 if __name__ == "__main__":
     root = tk.Window(themename="yeti")
-    root.geometry("500x400")
+    root.geometry("900x800")
+    root.state("zoomed")
     viewer = DICOMViewer(root)
     root.mainloop()
