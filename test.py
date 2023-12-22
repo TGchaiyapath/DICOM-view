@@ -167,10 +167,19 @@ class DICOMViewer:
         # Connect the mouse click and release events to the drawing function
         self.cid_press = None
         self.cid_release = None
-        self.brightness_scale = Scale(image_window, from_=0, to_=255, orient="horizontal", label="Brightness", command=self.adjust_brightness)
-        self.brightness_scale.set(128)  # Set an initial brightness value (e.g., 128)
-        self.brightness_scale.pack(pady=10)
-        
+         # Create a frame to display DICOM information
+        info_frame = tk.Frame(image_window)
+        info_frame.pack(side=tk.RIGHT, padx=10, pady=10, fill=tk.Y)
+
+        # ... (Your existing code)
+
+        # Scale widget for contrast adjustment
+        contrast_scale_label = tk.Label(info_frame, text="Contrast Adjustment")
+        contrast_scale_label.pack(pady=5)
+
+        contrast_scale = Scale(info_frame, from_=0.01, to=10, resolution=0.01, orient="horizontal", length=200, command=lambda value: self.adjust_contrast(value, ax, canvas))
+        contrast_scale.set(1.0)  # Set initial value
+        contrast_scale.pack(pady=10)
         #place widjet
         self.canvas_widget.pack(side=tk.BOTTOM, expand=True, padx=5, pady=5,anchor="sw",fill="x")
         self.toggle_drag_button.pack(side=tk.LEFT, padx=5, pady=5,anchor="nw",fill="both",expand=False)
@@ -533,7 +542,38 @@ class DICOMViewer:
             except Exception as e:
                 # Display an error message if there is an issue
                 self.error_label.config(text=f"Error: {str(e)}")
-    
+    def adjust_contrast(self, value, ax, canvas):
+        # Adjust contrast based on the scale widget value using cv2.equalizeHist
+        if self.file_paths:
+            try:
+                # Read the DICOM file
+                dicom_data = pydicom.dcmread(self.file_paths[self.current_index]).pixel_array
+
+                # Normalize pixel values to the range [0, 255]
+                dicom_data = (dicom_data / np.max(dicom_data) * 255).astype(np.uint8)
+
+                #Apply contrast stretching to enchance contrast
+                p1, p99= np.percentile(dicom_data,(1,99))
+                contrast_stretched_image=np.clip((dicom_data-p1)/(p99-p1)*255,0,255).astype(np.uint8)
+
+
+                gamma = float(value)  # Adjust gamma value as per requirement
+                table = np.array([((i / 255.0) ** gamma) * 255 for i in np.arange(0, 256)]).astype("uint8")
+                contrast_enhanced_image = cv2.LUT(contrast_stretched_image, table)
+
+
+                
+
+                ax.clear()
+                ax.imshow(contrast_enhanced_image, cmap=plt.cm.gray)
+                ax.axis('off')  # Hide the axes
+                canvas.draw()
+
+                # Clear error message
+                self.error_label.config(text="")
+            except Exception as e:
+                # Display an error message if there is an issue
+                self.error_label.config(text=f"Error: {str(e)}")
     
 
 

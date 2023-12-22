@@ -560,7 +560,7 @@ class DICOMViewer:
 
                 # Apply contrast adjustment
                 # Use np.power(10, value / 127.0) to convert logarithmic scale to linear scale
-                adjusted_image = cv2.convertScaleAbs(dicom_data, alpha=float(np.power(600, (value / 127.0))))
+                adjusted_image = cv2.convertScaleAbs(dicom_data, alpha=float(np.power(700, (value / 127.0))))
 
                 ax.clear()
                 ax.imshow(adjusted_image, cmap=plt.cm.gray)
