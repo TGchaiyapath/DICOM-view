@@ -94,8 +94,7 @@ class DICOMViewer:
         canvas_widget = canvas.get_tk_widget()
         canvas_widget.pack()
 
-        # Load the DICOM image in the new window
-        self.load_dicom_image_internal(ax, canvas)
+        
 
         # Create another window to display DICOM tags
         tags_window = tk.Toplevel(self.master)

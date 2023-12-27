@@ -26,28 +26,31 @@ class DICOMViewer:
         self.rotate_flip_button = None  # Add this line
         # Browse button
         self.browse_button = tk.Button(self.master, text="Browse", command=self.browse_directory)
-        self.browse_button.pack(side=tk.LEFT, pady=10)
         # Labels for HN (Hospital Number) and Accession
-        self.hn_label = tk.Label(self.master, text="HN (Hospital Number):")
-        self.hn_label.pack(pady=5)
+        self.hn_label = tk.Label(self.master, text="Hospital Number:")
 
         self.hn_entry = tk.Entry(self.master, textvariable=self.hospital_number, width=20)
-        self.hn_entry.pack(pady=5)
         self.hn_entry.bind("<Return>", self.load_dicom_from_directory)
-
-        self.accession_label = tk.Label(self.master, text="Accession:")
-        self.accession_label.pack(pady=5)
-
-        self.accession_entry = tk.Entry(self.master, textvariable=self.accession_number, width=20)
-        self.accession_entry.pack(pady=5)
 
         # Load button
         self.load_button = tk.Button(self.master, text="Load DICOM", command=self.load_dicom_image)
-        self.load_button.pack(side=tk.RIGHT, pady=10)
 
         # Label for displaying error messages
         self.error_label = tk.Label(self.master, text="")
-        self.error_label.pack(pady=5)
+        
+
+
+        
+        #pack the widget
+        self.browse_button.pack(side=tk.LEFT,anchor='nw', padx=5)
+        self.hn_label.pack(side=tk.LEFT,anchor='nw', padx=5)
+        self.hn_entry.pack(side=tk.LEFT,anchor='nw', padx=5)
+        self.load_button.pack(side=tk.LEFT,anchor='nw', padx=5)
+        self.error_label.pack(side=tk.TOP,anchor='n', padx=5)
+
+
+
+
     
     def browse_directory(self):
         # Open a file dialog to select a directory
@@ -86,6 +89,42 @@ class DICOMViewer:
                 self.error_label.config(text=f"No DICOM files found in directory: {directory_path}")
         else:
             self.error_label.config(text="Please enter an HN (Hospital Number).")
+    def load_dicom_image_internal(self, ax, canvas):
+        if self.file_paths:
+            try:
+                # Read the DICOM file
+                dicom_data = pydicom.dcmread(self.file_paths[self.current_index])
+
+                # Display the image using matplotlib
+                ax.clear()
+                ax.imshow(dicom_data.pixel_array, cmap=plt.cm.gray)
+                ax.axis('off')  # Hide the axes
+                canvas.draw()
+
+                # Clear error message
+                self.error_label.config(text="")
+            except Exception as e:
+                # Display an error message if there is an issue
+                self.error_label.config(text=f"Error: {str(e)}")
+
+    def show_next(self, ax, canvas):
+        if self.file_paths and self.current_index < len(self.file_paths) - 1:
+            self.current_index += 1
+            self.update_entry()
+            self.load_dicom_image_internal(ax, canvas)
+
+    def show_previous(self, ax, canvas):
+        if self.file_paths and self.current_index > 0:
+            self.current_index -= 1
+            self.update_entry()
+            self.load_dicom_image_internal(ax, canvas)
+
+    def update_entry(self):
+        # Update the Entry widgets with the current Accession and HN
+        
+
+        self.hn_entry.delete(0, tk.END)
+        self.hn_entry.insert(tk.END, self.hospital_number.get())
 
     def create_image_window(self):
         # Create a new window to display the DICOM image with next, previous, zoom in, and zoom out buttons
@@ -100,6 +139,19 @@ class DICOMViewer:
         
         # Load the DICOM image in the new window    
         self.load_dicom_image_internal(ax, canvas)
+        # Create a Frame to contain widgets on the left side
+        left_frame = tk.Frame(image_window)
+        left_frame.pack(side=tk.LEFT, padx=10, pady=10, fill=tk.Y)
+
+        # Listbox to display DICOM series
+        series_listbox = Listbox(left_frame, selectbackground='lightgray', selectmode=tk.SINGLE, height=10, width=30)
+        series_listbox.pack(side=tk.LEFT,anchor='w', pady=10)
+
+        # Load DICOM series into the Listbox
+        self.load_dicom_series(series_listbox)
+
+        # Bind the ListboxSelect event to a callback function
+        series_listbox.bind("<<ListboxSelect>>", lambda event: self.load_selected_series(series_listbox.get(tk.ACTIVE)))
 
         # Button to toggle drag functionality
         self.toggle_drag_button = tk.Button(image_window, text="Toggle Drag", command=self.toggle_drag)
@@ -202,13 +254,13 @@ class DICOMViewer:
         
         # Scale widget for contrast adjustment
         contrast_scale_label = tk.Label(info_frame, text="Contrast Adjustment")
-        contrast_scale = Scale(info_frame, from_=-100, to=50, orient="horizontal", length=200, resolution=0.01, command=lambda value: self.adjust_contrast(float(value), ax, canvas))
-        contrast_scale.set(-25)  # Set initial value
-        # Scale widget for contrast adjustment
+        contrast_scale = Scale(info_frame, from_=-120, to=50, orient="horizontal", length=200, resolution=0.01, command=lambda value: self.adjust_brightness_and_contrast(float(value), brightness_scale.get(), ax, canvas))
+        contrast_scale.set(-35)  # Set initial value
+
+        # Scale widget for brightness adjustment
         brightness_scale_label = tk.Label(info_frame, text="Brightness Adjustment")
-        brightness_scale = Scale(info_frame, from_=-255, to=255, resolution=0.01, orient="horizontal", length=200, command=lambda value: self.adjust_brightness(value, ax, canvas))
+        brightness_scale = Scale(info_frame, from_=-255, to=255, resolution=0.01, orient="horizontal", length=200, command=lambda value: self.adjust_brightness_and_contrast(contrast_scale.get(), value, ax, canvas))
         brightness_scale.set(1.0)  # Set initial value
-        
 
 
 
@@ -381,48 +433,8 @@ class DICOMViewer:
         normalized_image = 255.0 * (image - min_val) / (max_val - min_val)
         normalized_image = normalized_image.astype(np.uint8)
         return normalized_image
-
-    def load_dicom_image_internal(self, ax, canvas):
-        if self.file_paths:
-            try:
-                # Read the DICOM file
-                dicom_data = pydicom.dcmread(self.file_paths[self.current_index])
-
-                # Display the image using matplotlib
-                ax.clear()
-                ax.imshow(dicom_data.pixel_array, cmap=plt.cm.gray)
-                ax.axis('off')  # Hide the axes
-                canvas.draw()
-
-                # Set Accession number from the DICOM file
-                accession_number = dicom_data.get("AccessionNumber", "N/A")
-                self.accession_number.set(accession_number)
-
-                # Clear error message
-                self.error_label.config(text="")
-            except Exception as e:
-                # Display an error message if there is an issue
-                self.error_label.config(text=f"Error: {str(e)}")
-
-    def show_next(self, ax, canvas):
-        if self.file_paths and self.current_index < len(self.file_paths) - 1:
-            self.current_index += 1
-            self.update_entry()
-            self.load_dicom_image_internal(ax, canvas)
-
-    def show_previous(self, ax, canvas):
-        if self.file_paths and self.current_index > 0:
-            self.current_index -= 1
-            self.update_entry()
-            self.load_dicom_image_internal(ax, canvas)
-
-    def update_entry(self):
-        # Update the Entry widgets with the current Accession and HN
-        self.accession_entry.delete(0, tk.END)
-        self.accession_entry.insert(tk.END, self.accession_number.get())
-
-        self.hn_entry.delete(0, tk.END)
-        self.hn_entry.insert(tk.END, self.hospital_number.get())
+    
+    
 
     def zoom_out(self, ax, canvas):
         ax.set_xlim(ax.get_xlim()[0] * 1.2, ax.get_xlim()[1] * 1.2)
@@ -555,36 +567,49 @@ class DICOMViewer:
             except Exception as e:
                 # Display an error message if there is an issue
                 self.error_label.config(text=f"Error: {str(e)}")
-
-    def adjust_brightness(self, value, ax, canvas):
-        # Adjust contrast based on the scale widget value using cv2.equalizeHist
+    def load_dicom_series(self, listbox):
+        # Load DICOM series into the provided Listbox
         if self.file_paths:
             try:
-                # Read the DICOM file
-                dicom_data = pydicom.dcmread(self.file_paths[self.current_index]).pixel_array
+                # Get unique series descriptions from the DICOM files
+                series_descriptions = set()
+                for file_path in self.file_paths:
+                    dicom_data = pydicom.dcmread(file_path)
+                    series_description = dicom_data.get("SeriesDescription", "N/A")
+                    series_descriptions.add(series_description)
 
-                # Normalize pixel values to the range [0, 255]
-                dicom_data = (dicom_data / np.max(dicom_data) * 255).astype(np.uint8)
+                # Add unique series descriptions to the Listbox
+                for series_description in series_descriptions:
+                    listbox.insert(tk.END, series_description)
 
-                if float(value) >= 0:
-                    bright_image = cv2.add(dicom_data, float(value) )
-                else:
-                    bright_image = cv2.subtract(dicom_data, -float(value))
-                
-  
-                ax.clear()
-                ax.imshow(bright_image, cmap=plt.cm.gray)
-                ax.axis('off')  # Hide the axes
-                canvas.draw()
-             
-                # Clear error message
-                self.error_label.config(text="")
             except Exception as e:
                 # Display an error message if there is an issue
                 self.error_label.config(text=f"Error: {str(e)}")
 
-    def adjust_contrast(self, value, ax, canvas):
-        # Adjust contrast based on the scale widget value
+    def load_selected_series(self, selected_series):
+        # Load and display the selected DICOM series
+        if self.file_paths and selected_series:
+            try:
+                # Filter file paths based on whether the selected series is part of the SeriesDescription
+                matching_series = [series for series in self.file_paths if selected_series.lower() in pydicom.dcmread(series).get("SeriesDescription", "").lower()]
+
+                if matching_series:
+                    # Update the file paths and reset the current index
+                    self.file_paths = matching_series
+                    self.current_index = 0
+
+                    # Update the displayed image in the existing image window
+                    self.load_dicom_image_internal(self.fig.axes[0], self.canvas_widget)
+
+                    # Clear error message
+                    self.error_label.config(text="")
+                else:
+                    # Display an error message if no matching series is found
+                    self.error_label.config(text=f"No matching DICOM series found: {selected_series}")
+            except Exception as e:
+                # Display an error message if there is an issue
+                self.error_label.config(text=f"Error: {str(e)}")
+    def adjust_brightness_and_contrast(self, contrast_value, brightness_value, ax, canvas):
         if self.file_paths:
             try:
                 # Read the DICOM file
@@ -592,11 +617,20 @@ class DICOMViewer:
 
                 # Normalize pixel values to the range [0, 255]
                 dicom_data = (dicom_data / np.max(dicom_data) * 255).astype(np.uint8)
+                
+                # Adjust brightness
+                if float(brightness_value) >= 0:
+                    bright_image = cv2.add(dicom_data, float(brightness_value))
+                else:
+                    bright_image = cv2.subtract(dicom_data, -float(brightness_value))
 
-                # Apply contrast adjustment
-                # Use np.power(10, value / 127.0) to convert logarithmic scale to linear scale
-                adjusted_image = cv2.convertScaleAbs(dicom_data, alpha=float(np.power(800, (value / 127.0))))
+                # Adjust contrast
+                adjusted_image = cv2.convertScaleAbs(bright_image, alpha=float(np.power(400, (contrast_value / 127.0))))
 
+                # Clip pixel values to ensure they are in the range [0, 255]
+                adjusted_image = np.clip(adjusted_image, 0, 255)
+
+                # Clear axis and display the adjusted image
                 ax.clear()
                 ax.imshow(adjusted_image, cmap=plt.cm.gray)
                 ax.axis('off')  # Hide the axes
@@ -604,9 +638,11 @@ class DICOMViewer:
 
                 # Clear error message
                 self.error_label.config(text="")
+                
             except Exception as e:
                 # Display an error message if there is an issue
                 self.error_label.config(text=f"Error: {str(e)}")
+
 #main
 if __name__ == "__main__":
     root = tk.Window(themename="yeti")

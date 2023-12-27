@@ -101,6 +101,10 @@ class DICOMViewer:
                 ax.axis('off')  # Hide the axes
                 canvas.draw()
 
+                # Set Accession number from the DICOM file
+                accession_number = dicom_data.get("AccessionNumber", "N/A")
+                self.accession_number.set(accession_number)
+
                 # Clear error message
                 self.error_label.config(text="")
             except Exception as e:
