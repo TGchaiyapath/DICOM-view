@@ -3,13 +3,15 @@ import pydicom
 import matplotlib.pyplot as plt
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 import numpy as np
-from tkinter import Listbox, Menu
-from PIL import Image, ImageTk
+from tkinter import Listbox
+
 from tkinter import filedialog
 import ttkbootstrap as tk
 from ttkbootstrap.constants import *
 import cv2
 from tkinter import Scale
+
+
 
 class DICOMViewer:
     def __init__(self, master):
@@ -101,6 +103,10 @@ class DICOMViewer:
                 ax.axis('off')  # Hide the axes
                 canvas.draw()
 
+                # Set Accession number from the DICOM file
+                accession_number = dicom_data.get("AccessionNumber", "N/A")
+                self.accession_number.set(accession_number)
+
                 # Clear error message
                 self.error_label.config(text="")
             except Exception as e:
@@ -156,6 +162,16 @@ class DICOMViewer:
         # Button to toggle drag functionality
         self.toggle_drag_button = tk.Button(image_window, text="Toggle Drag", command=self.toggle_drag)
         
+        # Button to toggle freehand drawing functionality
+        self.freehand_button = tk.Button(image_window, text="Freehand Draw", command=self.activate_freehand_drawing)
+        self.freehand_button.pack(side=tk.LEFT, padx=5, pady=5, anchor="nw", expand=False)
+
+        # Variable for tracking whether freehand drawing is enabled
+        self.freehand_enabled = False
+
+        # Variables for freehand drawing
+        self.freehand_points = []
+        self.cid_motion = None
         
         # Next and Previous buttons in the new window
         next_button = tk.Button(image_window, text="Next", command=lambda: self.show_next(ax, canvas))
@@ -203,7 +219,7 @@ class DICOMViewer:
         
 
         # Load an arrow icon image with a relative path
-        arrow_icon_path = os.path.abspath("icon/right-arrow.png")  # Adjust the folder structure as needed
+        arrow_icon_path = os.path.abspath("icon/up-right-arrow.png")  # Adjust the folder structure as needed
         icon_AR = tk.PhotoImage(file=arrow_icon_path)
         self.arrow_icon = icon_AR.subsample(27, 27)
         
@@ -211,13 +227,36 @@ class DICOMViewer:
         single_arrow_button = tk.Button(image_window, command=lambda: self.activate_single_ended_arrow(ax, canvas),image=self.arrow_icon            )
         
              
-        # Rotate/Flip button in the new window
-        rotate_flip_button = tk.Button(image_window, text="Rotate/Flip", command=self.show_rotate_flip_menu)
+        # Load a horizon flip icon image
+        Hflip_icon_path = os.path.abspath("icon/flip.png")  
+        icon_HF = tk.PhotoImage(file=Hflip_icon_path)
+        self.Hflip_icon = icon_HF.subsample(27, 27)
+        # Flip horizontally button in the new window
+        flip_horizontal_button = tk.Button(image_window, command=lambda: self.flip_image(ax, canvas, horizontal=True),image=self.Hflip_icon)
         
 
-        # Display the menu at the button location in the image window
-        self.rotate_flip_button = tk.Button(image_window, text="Rotate/Flip", command=self.show_rotate_flip_menu)
+        # Load a vertical flip icon image
+        Vflip_icon_path = os.path.abspath("icon/vertical-flip.png")  
+        icon_VF = tk.PhotoImage(file=Vflip_icon_path)
+        self.Vflip_icon = icon_VF.subsample(27, 27)
+        # Flip vertically button in the new window
+
+        flip_vertical_button = tk.Button(image_window, command=lambda: self.flip_image(ax, canvas, vertical=True),image=self.Vflip_icon)
         
+       
+        # Load a rotate right icon image
+        RotateR_icon_path = os.path.abspath("icon/rotate-right.png")  
+        icon_RR = tk.PhotoImage(file=RotateR_icon_path)
+        self.RotateR_icon = icon_RR.subsample(27, 27)
+        # Rotate button in the new window
+        rotate_button_clockwise = tk.Button(image_window,command=lambda: self.rotate_image(ax, canvas, clockwise=False),image=self.RotateR_icon)
+
+        # Load a rotate right icon image
+        RotateL_icon_path = os.path.abspath("icon/rotate-left.png")  
+        icon_RL = tk.PhotoImage(file=RotateL_icon_path)
+        self.RotateL_icon = icon_RL.subsample(27, 27)
+        # Rotate counterclockwise button in the new window
+        rotate_button_counterclockwise = tk.Button(image_window, command=lambda: self.rotate_image(ax, canvas, clockwise=True),image=self.RotateL_icon)
         # Variable for tracking whether dragging is enabled
         self.drag_enabled = True
 
@@ -234,7 +273,6 @@ class DICOMViewer:
         # Listbox to display DICOM tags
         tags_listbox = Listbox(image_window, selectbackground='lightgray', selectmode=tk.SINGLE, height=10, width=30)
         
-
         # Load DICOM tags into the Listbox
         self.load_dicom_tags(tags_listbox)
 
@@ -274,36 +312,107 @@ class DICOMViewer:
         straight_line_button.pack(side=tk.LEFT, padx=5, pady=5,anchor="nw",expand=False)
         dashed_line_button.pack(side=tk.LEFT, padx=5, pady=5,anchor="nw",expand=False)
         single_arrow_button.pack(side=tk.LEFT, padx=5, pady=5,anchor="nw",expand=False)
-        self.rotate_flip_button.pack(side=tk.LEFT, padx=5, pady=5,anchor="nw",expand=False)
+        flip_horizontal_button.pack(side=tk.LEFT, padx=5, pady=5,anchor="nw",expand=False)
+        flip_vertical_button.pack(side=tk.LEFT, padx=5, pady=5,anchor="nw",expand=False)
+        rotate_button_clockwise.pack(side=tk.LEFT, padx=5, pady=5,anchor="nw",expand=False)
+        rotate_button_counterclockwise.pack(side=tk.LEFT, padx=5, pady=5,anchor="nw",expand=False)
         tags_listbox.pack(side=tk.RIGHT, padx=10, pady=10, fill=tk.Y)
         info_frame.pack(side=tk.RIGHT, padx=10, pady=10, fill=tk.Y)
         contrast_scale_label.pack(pady=5)
         contrast_scale.pack(pady=10)
         brightness_scale_label.pack(pady=5)
         brightness_scale.pack(pady=10)
+    def activate_freehand_drawing(self):
+        # Activate the freehand drawing tool
+        if not self.freehand_enabled:
+            self.freehand_enabled = True
+            self.freehand_button.config(text="Disable Freehand")
+            self.freehand_points = []  # Reset the list of points
 
+            # Connect the right mouse button press event to start drawing
+            self.cid_right_press = self.fig.canvas.mpl_connect("button_press_event", self.on_right_press)
+        else:
+            self.freehand_enabled = False
+            self.freehand_button.config(text="Freehand Draw")
+
+            # Disconnect the right mouse button press event
+            if self.cid_right_press:
+                self.fig.canvas.mpl_disconnect(self.cid_right_press)
+
+            # Draw the freehand line on the image
+            if self.freehand_points:
+                self.draw_freehand_line()
+
+    def on_right_press(self, event):
+        # Start drawing on right mouse button press
+        if self.freehand_enabled and event.button == 3:  # 3 corresponds to the right mouse button
+            # Connect the mouse motion event to the drawing function
+            self.cid_motion = self.fig.canvas.mpl_connect("motion_notify_event", self.on_motion)
+
+    def on_motion(self, event):
+        # Record the mouse movement for freehand drawing
+        if self.freehand_enabled:
+            self.freehand_points.append((event.xdata, event.ydata))
+
+            # Draw the freehand line on the image in real-time
+            self.draw_freehand_line_realtime()
+
+    def draw_freehand_line_realtime(self):
+        # Draw the freehand line on the image in real-time
+        if self.file_paths:
+            try:
+                # Read the DICOM file
+                dicom_data = pydicom.dcmread(self.file_paths[self.current_index])
+
+                # Draw the freehand line on the image using matplotlib
+                ax = self.fig.axes[0]
+                for i in range(1, len(self.freehand_points)):
+                    start_point = self.freehand_points[i - 1]
+                    end_point = self.freehand_points[i]
+                    ax.plot([start_point[0], end_point[0]], [start_point[1], end_point[1]], color='b', linestyle='-', linewidth=1)
+
+        
+                # Clear error message
+                self.error_label.config(text="")
+            except Exception as e:
+                # Display an error message if there is an issue
+                self.error_label.config(text=f"Error: {str(e)}")    
+
+    def on_right_press(self, event):
+        # Start drawing on right mouse button press
+        if self.freehand_enabled and event.button == 3:  # 3 corresponds to the right mouse button
+            # Connect the mouse motion event to the drawing function
+            self.cid_motion = self.fig.canvas.mpl_connect("motion_notify_event", self.on_motion)
+
+    def on_motion(self, event):
+        # Record the mouse movement for freehand drawing
+        if self.freehand_enabled:
+            self.freehand_points.append((event.xdata, event.ydata))
+
+            # Draw the freehand line on the image in real-time
+            self.draw_freehand_line_realtime()
+
+    def draw_freehand_line_realtime(self):
+        # Draw the freehand line on the image in real-time
+        if self.file_paths:
+            try:
+                # Read the DICOM file
+                dicom_data = pydicom.dcmread(self.file_paths[self.current_index])
+
+                # Draw the freehand line on the image using matplotlib
+                ax = self.fig.axes[0]
+                for i in range(1, len(self.freehand_points)):
+                    start_point = self.freehand_points[i - 1]
+                    end_point = self.freehand_points[i]
+                    ax.plot([start_point[0], end_point[0]], [start_point[1], end_point[1]], color='b', linestyle='-', linewidth=1)
+
+        
+                # Clear error message
+                self.error_label.config(text="")
+            except Exception as e:
+                # Display an error message if there is an issue
+                self.error_label.config(text=f"Error: {str(e)}")
  
-    def show_rotate_flip_menu(self):
-        # Create a menu for rotate and flip options
-        rotate_flip_menu = Menu(self.master, tearoff=0)
-
-        # Add rotation options to the menu
-        rotate_menu = Menu(rotate_flip_menu, tearoff=0)
-        rotate_menu.add_command(label="Clockwise", command=lambda: self.rotate_image(clockwise=True))
-        rotate_menu.add_command(label="Counterclockwise", command=lambda: self.rotate_image(clockwise=False))
-        rotate_flip_menu.add_cascade(label="Rotate", menu=rotate_menu)
-
-        # Add flip options to the menu
-        flip_menu = Menu(rotate_flip_menu, tearoff=0)
-        flip_menu.add_command(label="Horizontal", command=lambda: self.flip_image(horizontal=True))
-        flip_menu.add_command(label="Vertical", command=lambda: self.flip_image(vertical=True))
-        rotate_flip_menu.add_cascade(label="Flip", menu=flip_menu)
-
-        # Display the menu just below the button
-        self.rotate_flip_button.update()
-        x = self.rotate_flip_button.winfo_rootx() + self.rotate_flip_button.winfo_width() // 2
-        y = self.rotate_flip_button.winfo_rooty() + self.rotate_flip_button.winfo_height()
-        rotate_flip_menu.post(x, y)
     
     def toggle_drag(self):
         # Toggle the drag functionality on and off
@@ -338,46 +447,31 @@ class DICOMViewer:
             ax.set_xlim(ax.get_xlim()[0] - deltax, ax.get_xlim()[1] - deltax)
             ax.set_ylim(ax.get_ylim()[0] - deltay, ax.get_ylim()[1] - deltay)
             canvas.draw()
-    
-    
-    def rotate_image(self, clockwise=True):
+    def rotate_image(self, ax, canvas, clockwise=True):
         if self.file_paths:
             try:
                 # Read the DICOM file
                 dicom_data = pydicom.dcmread(self.file_paths[self.current_index])
 
                 # Update rotation angle (rotate by 90 degrees in the specified direction)
-                rotation_direction = -1 if clockwise else 1  # Adjusted rotation direction
+                rotation_direction = 1 if clockwise else -1
                 self.rotation_angle = (self.rotation_angle + rotation_direction * 90) % 360
 
                 # Rotate the image
                 rotated_image = np.rot90(dicom_data.pixel_array, k=self.rotation_angle // 90)
 
-                # Normalize pixel values to preserve brightness and contrast
-                rotated_image = self.normalize_image(rotated_image)
-
-                # Display the rotated image using PIL and PhotoImage
-                rotated_photo = ImageTk.PhotoImage(Image.fromarray(rotated_image))
-
-                # Delete existing image items on the Canvas
-                self.canvas_widget.delete("all")
-
-                # Create a new image item on the Canvas
-                self.canvas_widget.create_image(0, 0, anchor=tk.NW, image=rotated_photo)
-
-                # Keep a reference to avoid garbage collection
-                self.canvas_widget.image = rotated_photo
-
-                # Reconnect events
-                self.reconnect_events()
+                # Display the rotated image using matplotlib
+                ax.clear()
+                ax.imshow(rotated_image, cmap=plt.cm.gray)
+                ax.axis('off')  # Hide the axes
+                canvas.draw()
 
                 # Clear error message
                 self.error_label.config(text="")
             except Exception as e:
                 # Display an error message if there is an issue
                 self.error_label.config(text=f"Error: {str(e)}")
-
-    def flip_image(self, horizontal=False, vertical=False):
+    def flip_image(self, ax, canvas, horizontal=False, vertical=False):
         if self.file_paths:
             try:
                 # Read the DICOM file
@@ -396,43 +490,19 @@ class DICOMViewer:
                 if self.is_flipped_vertical:
                     flipped_image = np.flipud(flipped_image)
 
-                # Normalize pixel values to preserve brightness and contrast
-                flipped_image = self.normalize_image(flipped_image)
-
-                # Display the flipped image using PIL and PhotoImage
-                flipped_photo = ImageTk.PhotoImage(Image.fromarray(flipped_image))
-
-                # Delete existing image items on the Canvas
-                self.canvas_widget.delete("all")
-
-                # Create a new image item on the Canvas
-                self.canvas_widget.create_image(0, 0, anchor=tk.NW, image=flipped_photo)
-
-                # Keep a reference to avoid garbage collection
-                self.canvas_widget.image = flipped_photo
-
-                # Reconnect events
-                self.reconnect_events()
+                # Display the flipped image using matplotlib
+                ax.clear()
+                ax.imshow(flipped_image, cmap=plt.cm.gray)
+                ax.axis('off')  # Hide the axes
+                canvas.draw()
 
                 # Clear error message
                 self.error_label.config(text="")
             except Exception as e:
                 # Display an error message if there is an issue
                 self.error_label.config(text=f"Error: {str(e)}")
+    
 
-    def reconnect_events(self):
-        # Reconnect events for dragging and drawing
-        self.canvas_widget.bind("<ButtonPress-1>", self.on_press)
-        self.canvas_widget.bind("<B1-Motion>", lambda event: self.on_drag(event, self.fig.axes[0], self.canvas_widget))
-        self.canvas_widget.bind("<ButtonRelease-1>", lambda event: self.on_release(event, self.fig.axes[0], self.canvas_widget))
-
-    def normalize_image(self, image):
-        # Normalize pixel values to the range [0, 255]
-        min_val = np.min(image)
-        max_val = np.max(image)
-        normalized_image = 255.0 * (image - min_val) / (max_val - min_val)
-        normalized_image = normalized_image.astype(np.uint8)
-        return normalized_image
     
     
 
@@ -642,7 +712,7 @@ class DICOMViewer:
             except Exception as e:
                 # Display an error message if there is an issue
                 self.error_label.config(text=f"Error: {str(e)}")
-
+   
 #main
 if __name__ == "__main__":
     root = tk.Window(themename="yeti")
