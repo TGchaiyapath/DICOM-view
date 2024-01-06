@@ -44,12 +44,13 @@ class DICOMViewer:
 
         
         #pack the widget
+        self.error_label.pack(side=tk.BOTTOM,anchor='n', padx=5,pady=50)
         self.browse_button.pack(side=tk.LEFT,anchor='nw', padx=5)
         self.hn_label.pack(side=tk.LEFT,anchor='nw', padx=5)
+        
         self.hn_entry.pack(side=tk.LEFT,anchor='nw', padx=5)
         self.load_button.pack(side=tk.LEFT,anchor='nw', padx=5)
-        self.error_label.pack(side=tk.TOP,anchor='n', padx=5)
-
+        
 
 
 
@@ -136,22 +137,23 @@ class DICOMViewer:
         # Create a new window to display the DICOM image with next, previous, zoom in, and zoom out buttons
         image_window = tk.Toplevel(self.master)
         image_window.title("DICOM Image Viewer")
-        image_window.geometry("950x700")
+        image_window.geometry("1600x900")
         image_window.state("zoomed")
-        # Matplotlib figure for displaying the image in the new window
+       
         self.fig, ax = plt.subplots(figsize=(7, 7))
+        self.fig.patch.set_facecolor('none')  # Set the facecolor of the figure to be transparent
+
         canvas = FigureCanvasTkAgg(self.fig, master=image_window)
-        self.canvas_widget = canvas.get_tk_widget()  # Fix here
+        self.canvas_widget = canvas.get_tk_widget()
+        self.canvas_widget.config(highlightthickness=0) 
         
         # Load the DICOM image in the new window    
         self.load_dicom_image_internal(ax, canvas)
         # Create a Frame to contain widgets on the left side
         left_frame = tk.Frame(image_window)
-        left_frame.pack(side=tk.LEFT, padx=10, pady=10, fill=tk.Y)
 
         # Listbox to display DICOM series
         series_listbox = Listbox(left_frame, selectbackground='lightgray', selectmode=tk.SINGLE, height=10, width=30)
-        series_listbox.pack(side=tk.LEFT,anchor='w', pady=10)
 
         # Load DICOM series into the Listbox
         self.load_dicom_series(series_listbox)
@@ -164,7 +166,6 @@ class DICOMViewer:
         
         # Button to toggle freehand drawing functionality
         self.freehand_button = tk.Button(image_window, text="Freehand Draw", command=self.activate_freehand_drawing)
-        self.freehand_button.pack(side=tk.LEFT, padx=5, pady=5, anchor="nw", expand=False)
 
         # Variable for tracking whether freehand drawing is enabled
         self.freehand_enabled = False
@@ -181,8 +182,8 @@ class DICOMViewer:
         
         image_window.bind("<Left>", lambda event: self.show_previous(ax, canvas))
 
-                # Load a zoom in icon image with a relative path
-        zoom_in_icon_path = os.path.abspath("icon/zoom-in.png")  # Adjust the folder structure as needed
+        # Load a zoom in icon image with a relative path
+        zoom_in_icon_path = os.path.relpath("icon/zoom-in.png")  # Adjust the folder structure as needed
         icon_ZM = tk.PhotoImage(file=zoom_in_icon_path)
         self.zoom_in_icon = icon_ZM.subsample(27, 27)
 
@@ -192,7 +193,7 @@ class DICOMViewer:
         image_window.bind("<Key-z>", lambda event: self.zoom_in(ax, canvas))
 
         # Load a zoom out icon image with a relative path
-        zoom_out_icon_path = os.path.abspath("icon/magnifying-glass.png")  # Adjust the folder structure as needed
+        zoom_out_icon_path = os.path.relpath("icon/magnifying-glass.png")  # Adjust the folder structure as needed
         icon_ZO = tk.PhotoImage(file=zoom_out_icon_path)
         self.zoom_out_icon = icon_ZO.subsample(27, 27)
 
@@ -201,7 +202,7 @@ class DICOMViewer:
         image_window.bind("<Key-x>", lambda event: self.zoom_out(ax, canvas))
 
         # Load a straight icon image with a relative path
-        straight_icon_path = os.path.abspath("icon/shape.png")  # Adjust the folder structure as needed
+        straight_icon_path = os.path.relpath("icon/shape.png")  # Adjust the folder structure as needed
         icon_ST = tk.PhotoImage(file=straight_icon_path)
         self.straight_icon = icon_ST.subsample(27, 27)
 
@@ -210,7 +211,7 @@ class DICOMViewer:
         
 
         # Load a dashed icon image with a relative path
-        dashed_icon_path = os.path.abspath("icon/dashed line.png")  # Adjust the folder structure as needed
+        dashed_icon_path = os.path.relpath("icon/dashed line.png")  # Adjust the folder structure as needed
         icon_D = tk.PhotoImage(file=dashed_icon_path)
         self.dashed_icon = icon_D.subsample(27, 27)
 
@@ -219,7 +220,7 @@ class DICOMViewer:
         
 
         # Load an arrow icon image with a relative path
-        arrow_icon_path = os.path.abspath("icon/up-right-arrow.png")  # Adjust the folder structure as needed
+        arrow_icon_path = os.path.relpath("icon/up-right-arrow.png")  # Adjust the folder structure as needed
         icon_AR = tk.PhotoImage(file=arrow_icon_path)
         self.arrow_icon = icon_AR.subsample(27, 27)
         
@@ -228,7 +229,7 @@ class DICOMViewer:
         
              
         # Load a horizon flip icon image
-        Hflip_icon_path = os.path.abspath("icon/flip.png")  
+        Hflip_icon_path = os.path.relpath("icon/flip.png")  
         icon_HF = tk.PhotoImage(file=Hflip_icon_path)
         self.Hflip_icon = icon_HF.subsample(27, 27)
         # Flip horizontally button in the new window
@@ -236,7 +237,7 @@ class DICOMViewer:
         
 
         # Load a vertical flip icon image
-        Vflip_icon_path = os.path.abspath("icon/vertical-flip.png")  
+        Vflip_icon_path = os.path.relpath("icon/vertical-flip.png")  
         icon_VF = tk.PhotoImage(file=Vflip_icon_path)
         self.Vflip_icon = icon_VF.subsample(27, 27)
         # Flip vertically button in the new window
@@ -245,14 +246,14 @@ class DICOMViewer:
         
        
         # Load a rotate right icon image
-        RotateR_icon_path = os.path.abspath("icon/rotate-right.png")  
+        RotateR_icon_path = os.path.relpath("icon/rotate-right.png")  
         icon_RR = tk.PhotoImage(file=RotateR_icon_path)
         self.RotateR_icon = icon_RR.subsample(27, 27)
         # Rotate button in the new window
         rotate_button_clockwise = tk.Button(image_window,command=lambda: self.rotate_image(ax, canvas, clockwise=False),image=self.RotateR_icon)
 
         # Load a rotate right icon image
-        RotateL_icon_path = os.path.abspath("icon/rotate-left.png")  
+        RotateL_icon_path = os.path.relpath("icon/rotate-left.png")  
         icon_RL = tk.PhotoImage(file=RotateL_icon_path)
         self.RotateL_icon = icon_RL.subsample(27, 27)
         # Rotate counterclockwise button in the new window
@@ -303,25 +304,28 @@ class DICOMViewer:
 
 
         #place widjet
-        self.canvas_widget.pack(side=tk.BOTTOM, expand=True, padx=5, pady=5,anchor="sw",fill="x")
-        self.toggle_drag_button.pack(side=tk.LEFT, padx=5, pady=5,anchor="nw",expand=False)
-        next_button.pack(side=tk.LEFT, padx=5, pady=5,anchor="nw",expand=False)
-        prev_button.pack(side=tk.LEFT, padx=5, pady=5,anchor="nw",expand=False)
-        zoom_in_button.pack(side=tk.LEFT, padx=5, pady=5,anchor="nw",expand=False)
-        zoom_out_button.pack(side=tk.LEFT, padx=5, pady=5,anchor="nw",expand=False)
-        straight_line_button.pack(side=tk.LEFT, padx=5, pady=5,anchor="nw",expand=False)
-        dashed_line_button.pack(side=tk.LEFT, padx=5, pady=5,anchor="nw",expand=False)
-        single_arrow_button.pack(side=tk.LEFT, padx=5, pady=5,anchor="nw",expand=False)
-        flip_horizontal_button.pack(side=tk.LEFT, padx=5, pady=5,anchor="nw",expand=False)
-        flip_vertical_button.pack(side=tk.LEFT, padx=5, pady=5,anchor="nw",expand=False)
-        rotate_button_clockwise.pack(side=tk.LEFT, padx=5, pady=5,anchor="nw",expand=False)
-        rotate_button_counterclockwise.pack(side=tk.LEFT, padx=5, pady=5,anchor="nw",expand=False)
-        tags_listbox.pack(side=tk.RIGHT, padx=10, pady=10, fill=tk.Y)
-        info_frame.pack(side=tk.RIGHT, padx=10, pady=10, fill=tk.Y)
-        contrast_scale_label.pack(pady=5)
-        contrast_scale.pack(pady=10)
-        brightness_scale_label.pack(pady=5)
-        brightness_scale.pack(pady=10)
+        left_frame.pack(side=tk.LEFT, padx=10, pady=10, fill=tk.BOTH)
+        series_listbox.pack(side=tk.LEFT,anchor='w', pady=10,fill=tk.Y)
+        self.freehand_button.pack(side=tk.LEFT, padx=1, pady=5, anchor="nw", expand=True,fill="x")
+        self.canvas_widget.pack(side=tk.BOTTOM, expand=True, padx=5, pady=5,anchor="sw",fill=tk.X)
+        self.toggle_drag_button.pack(side=tk.LEFT, padx=1, pady=5,anchor="nw",expand=True,fill="x")
+        next_button.pack(side=tk.LEFT, padx=1, pady=5,anchor="nw",expand=True,fill="x")
+        prev_button.pack(side=tk.LEFT, padx=1, pady=5,anchor="nw",expand=True,fill="x")
+        zoom_in_button.pack(side=tk.LEFT, padx=1, pady=5,anchor="nw",expand=True,fill="x")
+        zoom_out_button.pack(side=tk.LEFT, padx=1, pady=5,anchor="nw",expand=True,fill="x")
+        straight_line_button.pack(side=tk.LEFT, padx=1, pady=5,anchor="nw",expand=True,fill="x")
+        dashed_line_button.pack(side=tk.LEFT, padx=1, pady=5,anchor="nw",expand=True,fill="x")
+        single_arrow_button.pack(side=tk.LEFT, padx=1, pady=5,anchor="nw",expand=True,fill="x")
+        flip_horizontal_button.pack(side=tk.LEFT, padx=1, pady=5,anchor="nw",expand=True,fill="x")
+        flip_vertical_button.pack(side=tk.LEFT, padx=1, pady=5,anchor="nw",expand=True,fill="x")
+        rotate_button_clockwise.pack(side=tk.LEFT, padx=1, pady=5,anchor="nw",expand=True,fill="x")
+        rotate_button_counterclockwise.pack(side=tk.LEFT, padx=1, pady=5,anchor="nw",expand=True,fill="x")
+        tags_listbox.pack(side=tk.RIGHT, padx=10, pady=10, fill=tk.BOTH)
+        info_frame.pack(side=tk.RIGHT, padx=10, pady=10, fill=tk.BOTH)
+        contrast_scale_label.pack(pady=2)
+        contrast_scale.pack(pady=2,expand=True)
+        brightness_scale_label.pack(pady=2)
+        brightness_scale.pack(pady=2,expand=True)
     def activate_freehand_drawing(self):
         # Activate the freehand drawing tool
         if not self.freehand_enabled:
@@ -716,7 +720,6 @@ class DICOMViewer:
 #main
 if __name__ == "__main__":
     root = tk.Window(themename="yeti")
-    root.geometry("900x800")
-    root.state("zoomed")
+    root.geometry("530x200")
     viewer = DICOMViewer(root)
     root.mainloop()

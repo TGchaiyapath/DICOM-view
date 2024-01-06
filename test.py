@@ -44,12 +44,13 @@ class DICOMViewer:
 
         
         #pack the widget
+        self.error_label.pack(side=tk.BOTTOM,anchor='n', padx=5,pady=50)
         self.browse_button.pack(side=tk.LEFT,anchor='nw', padx=5)
         self.hn_label.pack(side=tk.LEFT,anchor='nw', padx=5)
+        
         self.hn_entry.pack(side=tk.LEFT,anchor='nw', padx=5)
         self.load_button.pack(side=tk.LEFT,anchor='nw', padx=5)
-        self.error_label.pack(side=tk.TOP,anchor='n', padx=5)
-
+        
 
 
 
@@ -136,8 +137,9 @@ class DICOMViewer:
         # Create a new window to display the DICOM image with next, previous, zoom in, and zoom out buttons
         image_window = tk.Toplevel(self.master)
         image_window.title("DICOM Image Viewer")
-        image_window.geometry("950x700")
-        image_window.state("zoomed")
+        image_window.geometry("1600x900")
+        image_window.state('zoomed')
+       
         # Matplotlib figure for displaying the image in the new window
         self.fig, ax = plt.subplots(figsize=(7, 7))
         canvas = FigureCanvasTkAgg(self.fig, master=image_window)
@@ -162,6 +164,16 @@ class DICOMViewer:
         # Button to toggle drag functionality
         self.toggle_drag_button = tk.Button(image_window, text="Toggle Drag", command=self.toggle_drag)
         
+        # Button to toggle freehand drawing functionality
+        self.freehand_button = tk.Button(image_window, text="Freehand Draw", command=self.activate_freehand_drawing)
+        self.freehand_button.pack(side=tk.LEFT, padx=5, pady=5, anchor="nw", expand=False)
+
+        # Variable for tracking whether freehand drawing is enabled
+        self.freehand_enabled = False
+
+        # Variables for freehand drawing
+        self.freehand_points = []
+        self.cid_motion = None
         
         # Next and Previous buttons in the new window
         next_button = tk.Button(image_window, text="Next", command=lambda: self.show_next(ax, canvas))
@@ -312,9 +324,96 @@ class DICOMViewer:
         contrast_scale.pack(pady=10)
         brightness_scale_label.pack(pady=5)
         brightness_scale.pack(pady=10)
-       
+    def activate_freehand_drawing(self):
+        # Activate the freehand drawing tool
+        if not self.freehand_enabled:
+            self.freehand_enabled = True
+            self.freehand_button.config(text="Disable Freehand")
+            self.freehand_points = []  # Reset the list of points
 
+            # Connect the right mouse button press event to start drawing
+            self.cid_right_press = self.fig.canvas.mpl_connect("button_press_event", self.on_right_press)
+        else:
+            self.freehand_enabled = False
+            self.freehand_button.config(text="Freehand Draw")
 
+            # Disconnect the right mouse button press event
+            if self.cid_right_press:
+                self.fig.canvas.mpl_disconnect(self.cid_right_press)
+
+            # Draw the freehand line on the image
+            if self.freehand_points:
+                self.draw_freehand_line()
+
+    def on_right_press(self, event):
+        # Start drawing on right mouse button press
+        if self.freehand_enabled and event.button == 3:  # 3 corresponds to the right mouse button
+            # Connect the mouse motion event to the drawing function
+            self.cid_motion = self.fig.canvas.mpl_connect("motion_notify_event", self.on_motion)
+
+    def on_motion(self, event):
+        # Record the mouse movement for freehand drawing
+        if self.freehand_enabled:
+            self.freehand_points.append((event.xdata, event.ydata))
+
+            # Draw the freehand line on the image in real-time
+            self.draw_freehand_line_realtime()
+
+    def draw_freehand_line_realtime(self):
+        # Draw the freehand line on the image in real-time
+        if self.file_paths:
+            try:
+                # Read the DICOM file
+                dicom_data = pydicom.dcmread(self.file_paths[self.current_index])
+
+                # Draw the freehand line on the image using matplotlib
+                ax = self.fig.axes[0]
+                for i in range(1, len(self.freehand_points)):
+                    start_point = self.freehand_points[i - 1]
+                    end_point = self.freehand_points[i]
+                    ax.plot([start_point[0], end_point[0]], [start_point[1], end_point[1]], color='b', linestyle='-', linewidth=1)
+
+        
+                # Clear error message
+                self.error_label.config(text="")
+            except Exception as e:
+                # Display an error message if there is an issue
+                self.error_label.config(text=f"Error: {str(e)}")    
+
+    def on_right_press(self, event):
+        # Start drawing on right mouse button press
+        if self.freehand_enabled and event.button == 3:  # 3 corresponds to the right mouse button
+            # Connect the mouse motion event to the drawing function
+            self.cid_motion = self.fig.canvas.mpl_connect("motion_notify_event", self.on_motion)
+
+    def on_motion(self, event):
+        # Record the mouse movement for freehand drawing
+        if self.freehand_enabled:
+            self.freehand_points.append((event.xdata, event.ydata))
+
+            # Draw the freehand line on the image in real-time
+            self.draw_freehand_line_realtime()
+
+    def draw_freehand_line_realtime(self):
+        # Draw the freehand line on the image in real-time
+        if self.file_paths:
+            try:
+                # Read the DICOM file
+                dicom_data = pydicom.dcmread(self.file_paths[self.current_index])
+
+                # Draw the freehand line on the image using matplotlib
+                ax = self.fig.axes[0]
+                for i in range(1, len(self.freehand_points)):
+                    start_point = self.freehand_points[i - 1]
+                    end_point = self.freehand_points[i]
+                    ax.plot([start_point[0], end_point[0]], [start_point[1], end_point[1]], color='b', linestyle='-', linewidth=1)
+
+        
+                # Clear error message
+                self.error_label.config(text="")
+            except Exception as e:
+                # Display an error message if there is an issue
+                self.error_label.config(text=f"Error: {str(e)}")
  
     
     def toggle_drag(self):
@@ -619,7 +718,6 @@ class DICOMViewer:
 #main
 if __name__ == "__main__":
     root = tk.Window(themename="yeti")
-    root.geometry("900x800")
-    root.state("zoomed")
+    root.geometry("530x200")
     viewer = DICOMViewer(root)
     root.mainloop()
