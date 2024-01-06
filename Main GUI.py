@@ -304,15 +304,15 @@ class DICOMViewer:
 
 
         #place widjet
-        left_frame.pack(side=tk.LEFT, padx=10, pady=10, fill=tk.BOTH)
+        left_frame.pack(side=tk.LEFT,anchor='w', padx=10, pady=10, fill=tk.BOTH)
         series_listbox.pack(side=tk.LEFT,anchor='w', pady=10,fill=tk.Y)
-        self.freehand_button.pack(side=tk.LEFT, padx=1, pady=5, anchor="nw", expand=True,fill="x")
         self.canvas_widget.pack(side=tk.BOTTOM, expand=True, padx=5, pady=5,anchor="sw",fill=tk.X)
         self.toggle_drag_button.pack(side=tk.LEFT, padx=1, pady=5,anchor="nw",expand=True,fill="x")
         next_button.pack(side=tk.LEFT, padx=1, pady=5,anchor="nw",expand=True,fill="x")
         prev_button.pack(side=tk.LEFT, padx=1, pady=5,anchor="nw",expand=True,fill="x")
         zoom_in_button.pack(side=tk.LEFT, padx=1, pady=5,anchor="nw",expand=True,fill="x")
         zoom_out_button.pack(side=tk.LEFT, padx=1, pady=5,anchor="nw",expand=True,fill="x")
+        self.freehand_button.pack(side=tk.LEFT, padx=1, pady=5, anchor="nw", expand=True,fill="x")
         straight_line_button.pack(side=tk.LEFT, padx=1, pady=5,anchor="nw",expand=True,fill="x")
         dashed_line_button.pack(side=tk.LEFT, padx=1, pady=5,anchor="nw",expand=True,fill="x")
         single_arrow_button.pack(side=tk.LEFT, padx=1, pady=5,anchor="nw",expand=True,fill="x")
