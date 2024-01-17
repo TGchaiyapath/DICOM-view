@@ -1,37 +1,51 @@
 import tkinter as tk
+from tkinter import filedialog
+import os
 
-def start_drag(event):
-    global last_x, last_y
-    last_x = event.x
-    last_y = event.y
+class YourApp(tk.Tk):
+    def __init__(self):
+        super().__init__()
 
-def drag_text(event):
-    global last_x, last_y
-    new_x, new_y = event.x, event.y
-    dx = new_x - last_x
-    dy = new_y - last_y
-    canvas.move(text_id, dx, dy)
-    last_x = new_x
-    last_y = new_y
+        self.hospital_number = tk.StringVar()
+        self.file_paths = []
+        self.current_index = 0
 
-# Create the main window
-root = tk.Tk()
-root.title("Move Text Only by Dragging")
+        self.error_label = tk.Label(self, text="")
+        self.error_label.pack()
 
-# Create a canvas widget
-canvas = tk.Canvas(root, width=400, height=200, bg="white")
-canvas.pack(padx=10, pady=10)
+        browse_button = tk.Button(self, text="Browse", command=self.browse_file)
+        browse_button.pack()
 
-# Add text to the canvas
-text_id = canvas.create_text(100, 100, text="Drag only me!", font=("Arial", 24), fill="blue")
+        undo_button = tk.Button(self, text="Undo", command=self.undo_action)
+        undo_button.pack()
 
-# Bind mouse events to the text item
-canvas.tag_bind(text_id, "<Button-1>", start_drag)
-canvas.tag_bind(text_id, "<B1-Motion>", drag_text)
+    def browse_file(self):
+        selected_file = filedialog.askopenfilename(filetypes=[("DICOM files", "*.dcm;*.DCM")])
 
-# Initialize variables to store the last mouse coordinates
-last_x = 0
-last_y = 0
+        if selected_file:
+            self.hospital_number.set(selected_file)
+            self.file_paths = [selected_file]
+            self.current_index = 0
+            self.update_entry()
+            self.create_image_window()
+        else:
+            self.error_label.config(text="No DICOM file selected.")
 
-# Run the Tkinter event loop
-root.mainloop()
+    def undo_action(self):
+        # Implement your undo logic here
+        # For example, reset the current index to the previous index
+        if self.current_index > 0:
+            self.current_index -= 1
+            self.update_entry()
+
+    def update_entry(self):
+        # Implement your entry update logic here
+        pass
+
+    def create_image_window(self):
+        # Implement your image window creation logic here
+        pass
+
+if __name__ == "__main__":
+    app = YourApp()
+    app.mainloop()

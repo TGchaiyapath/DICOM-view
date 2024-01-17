@@ -12,7 +12,6 @@ import cv2
 from tkinter import Scale
 
 
-
 class DICOMViewer:
     def __init__(self, master):
         self.master = master
@@ -27,7 +26,8 @@ class DICOMViewer:
         self.rotation_angle = 0  # Variable to track the rotation angle
         self.rotate_flip_button = None  # Add this line
         # Browse button
-        self.browse_button = tk.Button(self.master, text="Browse", command=self.browse_directory)
+        self.browse_button = tk.Button(self.master, text="Browse Folder", command=self.browse_directory)
+        self.browse_dcm_button = tk.Button(self.master, text="Browse File", command=self.browse_dcm_file)
         # Labels for HN (Hospital Number) and Accession
         self.hn_label = tk.Label(self.master, text="Hospital Number:")
 
@@ -44,12 +44,12 @@ class DICOMViewer:
 
         
         #pack the widget
-        self.error_label.pack(side=tk.BOTTOM,anchor='n', padx=5,pady=50)
-        self.browse_button.pack(side=tk.LEFT,anchor='nw', padx=5)
-        self.hn_label.pack(side=tk.LEFT,anchor='nw', padx=5)
-        
-        self.hn_entry.pack(side=tk.LEFT,anchor='nw', padx=5)
-        self.load_button.pack(side=tk.LEFT,anchor='nw', padx=5)
+        self.error_label.pack(side=tk.BOTTOM,anchor='n', padx=5,pady=50,expand=True)
+        self.browse_button.pack(side=tk.LEFT,anchor='nw', padx=5,expand=True)
+        self.browse_dcm_button.pack(side=tk.LEFT,anchor='nw', padx=5,expand=True)
+        self.hn_label.pack(side=tk.LEFT,anchor='nw', padx=5,expand=True)
+        self.hn_entry.pack(side=tk.LEFT,anchor='nw', padx=5,expand=True)
+        self.load_button.pack(side=tk.LEFT,anchor='nw', padx=5,expand=True)
         
 
 
@@ -71,6 +71,21 @@ class DICOMViewer:
             self.create_image_window()
         else:
             self.error_label.config(text=f"No DICOM files found in directory: {selected_directory}")
+    def browse_dcm_file(self):
+        # Open a file dialog to select a .dcm file
+        selected_file = filedialog.askopenfilename(filetypes=[("DICOM files", "*.dcm")])
+
+        if selected_file:
+            # Update the Entry widget with the selected file path
+            self.hospital_number.set(selected_file)
+
+            # Load the selected DICOM file
+            self.file_paths = [selected_file]
+            self.current_index = 0
+            self.update_entry()
+            self.create_image_window()
+        else:
+            self.error_label.config(text="No DICOM file selected.")
 
     def load_dicom_from_directory(self, event):
         # Event handler for pressing Enter in the HN Entry box
@@ -260,6 +275,12 @@ class DICOMViewer:
         rotate_button_counterclockwise = tk.Button(image_window, command=lambda: self.rotate_image(ax, canvas, clockwise=True),image=self.RotateL_icon)
         # Variable for tracking whether dragging is enabled
         self.drag_enabled = True
+        # Create buttons
+        rect_button = tk.Button(image_window, text="Draw Rectangle", command=lambda: self.activate_rectangle(ax,canvas))
+        
+        ellip_button = tk.Button(image_window, text="Draw Ellipse", command=lambda :self.activate_ellip(ax,canvas))
+        
+        
 
         # Variables for dragging
         self._drag_data = {"x": 0, "y": 0, "item": None}
@@ -304,8 +325,8 @@ class DICOMViewer:
 
 
         #place widjet
-        left_frame.pack(side=tk.LEFT,anchor='w', padx=10, pady=10, fill=tk.BOTH)
-        series_listbox.pack(side=tk.LEFT,anchor='w', pady=10,fill=tk.Y)
+        left_frame.pack(side=tk.LEFT,anchor='w', padx=10, pady=10, fill=tk.BOTH, expand=True)
+        series_listbox.pack(side=tk.LEFT,anchor='w', pady=10,fill=tk.Y, expand=True)
         self.canvas_widget.pack(side=tk.BOTTOM, expand=True, padx=5, pady=5,anchor="sw",fill=tk.X)
         self.toggle_drag_button.pack(side=tk.LEFT, padx=1, pady=5,anchor="nw",expand=True,fill="x")
         next_button.pack(side=tk.LEFT, padx=1, pady=5,anchor="nw",expand=True,fill="x")
@@ -320,12 +341,14 @@ class DICOMViewer:
         flip_vertical_button.pack(side=tk.LEFT, padx=1, pady=5,anchor="nw",expand=True,fill="x")
         rotate_button_clockwise.pack(side=tk.LEFT, padx=1, pady=5,anchor="nw",expand=True,fill="x")
         rotate_button_counterclockwise.pack(side=tk.LEFT, padx=1, pady=5,anchor="nw",expand=True,fill="x")
-        tags_listbox.pack(side=tk.RIGHT, padx=10, pady=10, fill=tk.BOTH)
-        info_frame.pack(side=tk.RIGHT, padx=10, pady=10, fill=tk.BOTH)
-        contrast_scale_label.pack(pady=2)
-        contrast_scale.pack(pady=2,expand=True)
-        brightness_scale_label.pack(pady=2)
-        brightness_scale.pack(pady=2,expand=True)
+        rect_button.pack(side=tk.LEFT, padx=1, pady=5,anchor="nw",expand=True,fill="x")
+        ellip_button.pack(side=tk.LEFT, padx=1, pady=5,anchor="nw",expand=True,fill="x")
+        tags_listbox.pack(side=tk.RIGHT, padx=10, pady=10, fill=tk.BOTH, expand=True)
+        info_frame.pack(side=tk.RIGHT, padx=10, pady=10, fill=tk.BOTH, expand=True)
+        contrast_scale_label.pack(pady=1,padx=1, expand=True)
+        contrast_scale.pack(pady=1,padx=1, expand=True)
+        brightness_scale_label.pack(pady=1,padx=1, expand=True)
+        brightness_scale.pack(pady=1,padx=1,expand=True)
     def activate_freehand_drawing(self):
         # Activate the freehand drawing tool
         if not self.freehand_enabled:
@@ -346,12 +369,7 @@ class DICOMViewer:
             # Draw the freehand line on the image
             if self.freehand_points:
                 self.draw_freehand_line()
-
-    def on_right_press(self, event):
-        # Start drawing on right mouse button press
-        if self.freehand_enabled and event.button == 3:  # 3 corresponds to the right mouse button
-            # Connect the mouse motion event to the drawing function
-            self.cid_motion = self.fig.canvas.mpl_connect("motion_notify_event", self.on_motion)
+    
 
     def on_motion(self, event):
         # Record the mouse movement for freehand drawing
@@ -439,8 +457,6 @@ class DICOMViewer:
             if event.state & 0x4:  # Check if Ctrl key is pressed
                 self._drag_data["x"] = event.x
                 self._drag_data["y"] = event.y
-           
-
     def on_drag(self, event, ax, canvas):
         if self.drag_enabled and (event.state & 0x4):  # Check if Ctrl key is pressed
             # Update the coordinates of the drag rectangle as the mouse is dragged
@@ -520,18 +536,7 @@ class DICOMViewer:
         ax.set_ylim(ax.get_ylim()[0] / 1.2, ax.get_ylim()[1] / 1.2)
         canvas.draw()
 
-    def activate_straight_line(self, ax, canvas):
-        # Activate the drawing tool to draw a straight line on the image
-        canvas.draw()
-
-        # Connect the mouse click and release events to the drawing function
-        cid_press = self.fig.canvas.mpl_connect("button_press_event", lambda event: self.straight_on_press(event, ax, canvas))
-        cid_release = self.fig.canvas.mpl_connect("button_release_event", lambda event: self.straight_on_release(event, ax, canvas))
-
-        # Store the connection IDs for later disconnection
-        self.cid_press = cid_press
-        self.cid_release = cid_release
-
+    
     def activate_straight_line(self, ax, canvas):
         # Activate the drawing tool to draw a straight line on the image
         canvas.draw()
@@ -544,18 +549,6 @@ class DICOMViewer:
         self.cid_press_straight = cid_press
         self.cid_release_straight = cid_release
 
-    #Draw staight when press and release
-    def activate_dashed_line(self, ax, canvas):
-        # Activate the drawing tool to draw a dashed line on the image
-        canvas.draw()
-
-        # Connect the mouse click and release events to the drawing function
-        cid_press = self.fig.canvas.mpl_connect("button_press_event", lambda event: self.dashed_on_press(event, ax, canvas))
-        cid_release = self.fig.canvas.mpl_connect("button_release_event", lambda event: self.dashed_on_release(event, ax, canvas))
-
-        # Store the connection IDs for later disconnection
-        self.cid_press_dashed = cid_press
-        self.cid_release_dashed = cid_release
 
     # Draw staight when press and release
     def straight_on_press(self, event, ax, canvas):
@@ -574,7 +567,93 @@ class DICOMViewer:
             self.fig.canvas.mpl_disconnect(self.cid_release_straight)
             ax.set_title("")  # Clear the title
             del self.start_point
+    def activate_ellip(self, ax, canvas):
+        # Activate the drawing tool to draw an oval on the image
+        canvas.draw()
 
+        # Connect the mouse click and release events to the drawing function
+        cid_press = self.fig.canvas.mpl_connect("button_press_event", lambda event: self.ellip_on_press(event, ax, canvas))
+        cid_release = self.fig.canvas.mpl_connect("button_release_event", lambda event: self.ellip_on_release(event, ax, canvas))
+
+        # Store the connection IDs for later disconnection
+        self.cid_press_ellip = cid_press
+        self.cid_release_ellip = cid_release
+
+    # Draw an oval when press and release
+    def ellip_on_press(self, event, ax, canvas):
+        # Record the starting point of the oval
+        self.start_point = (event.xdata, event.ydata)
+
+    def ellip_on_release(self, event, ax, canvas):
+        # Draw the oval on the image
+        if hasattr(self, 'start_point'):
+            end_point = (event.xdata, event.ydata)
+            
+            # Calculate the center and radii of the oval
+            center = ((self.start_point[0] + end_point[0]) / 2, (self.start_point[1] + end_point[1]) / 2)
+            radius_x = abs(end_point[0] - self.start_point[0]) / 2
+            radius_y = abs(end_point[1] - self.start_point[1]) / 2
+            
+            # Draw the oval using Ellipse
+            ellipse = plt.matplotlib.patches.Ellipse(center, width=radius_x * 2, height=radius_y * 2, color='cyan', fill=False, linestyle='-', linewidth=1)
+            ax.add_patch(ellipse)
+            canvas.draw()
+
+            # Disconnect the drawing tool after drawing the oval
+            self.fig.canvas.mpl_disconnect(self.cid_press_ellip)
+            self.fig.canvas.mpl_disconnect(self.cid_release_ellip)
+            ax.set_title("")  # Clear the title
+            del self.start_point
+
+    def activate_rectangle(self, ax, canvas):
+        # Activate the drawing tool to draw a rectangle on the image
+        canvas.draw()
+
+        # Connect the mouse click and release events to the drawing function
+        cid_press = self.fig.canvas.mpl_connect("button_press_event", lambda event: self.rectangle_on_press(event, ax, canvas))
+        cid_release = self.fig.canvas.mpl_connect("button_release_event", lambda event: self.rectangle_on_release(event, ax, canvas))
+
+        # Store the connection IDs for later disconnection
+        self.cid_press_rectangle = cid_press
+        self.cid_release_rectangle = cid_release
+
+    # Draw a rectangle when press and release
+    def rectangle_on_press(self, event, ax, canvas):
+        # Record the starting point of the rectangle
+        self.start_point = (event.xdata, event.ydata)
+
+    def rectangle_on_release(self, event, ax, canvas):
+        # Draw the rectangle on the image
+        if hasattr(self, 'start_point'):
+            end_point = (event.xdata, event.ydata)
+            
+            # Calculate the width and height of the rectangle
+            width = abs(end_point[0] - self.start_point[0])
+            height = abs(end_point[1] - self.start_point[1])
+            
+            # Draw the rectangle using Rectangle
+            rectangle = plt.matplotlib.patches.Rectangle(self.start_point, width, height, edgecolor='purple', fill=False, linestyle='-', linewidth=1)
+            ax.add_patch(rectangle)
+            canvas.draw()
+
+            # Disconnect the drawing tool after drawing the rectangle
+            self.fig.canvas.mpl_disconnect(self.cid_press_rectangle)
+            self.fig.canvas.mpl_disconnect(self.cid_release_rectangle)
+            ax.set_title("")  # Clear the title
+            del self.start_point
+
+    #Draw staight when press and release
+    def activate_dashed_line(self, ax, canvas):
+        # Activate the drawing tool to draw a dashed line on the image
+        canvas.draw()
+
+        # Connect the mouse click and release events to the drawing function
+        cid_press = self.fig.canvas.mpl_connect("button_press_event", lambda event: self.dashed_on_press(event, ax, canvas))
+        cid_release = self.fig.canvas.mpl_connect("button_release_event", lambda event: self.dashed_on_release(event, ax, canvas))
+
+        # Store the connection IDs for later disconnection
+        self.cid_press_dashed = cid_press
+        self.cid_release_dashed = cid_release
     #Draw dashed line when press and release
     def dashed_on_press(self, event, ax, canvas):
         # Record the starting point of the line
@@ -720,6 +799,6 @@ class DICOMViewer:
 #main
 if __name__ == "__main__":
     root = tk.Window(themename="yeti")
-    root.geometry("530x200")
+    root.geometry("670x200")
     viewer = DICOMViewer(root)
     root.mainloop()

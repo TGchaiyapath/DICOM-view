@@ -11,7 +11,9 @@ from ttkbootstrap.constants import *
 import cv2
 from tkinter import Scale
 
-
+#today We add the browse .dcm file button in code line 31,50,76-90
+#draw ellipse button in code line 283,347,572-608
+#draw rectangle button in code line
 
 class DICOMViewer:
     def __init__(self, master):
@@ -49,7 +51,6 @@ class DICOMViewer:
         self.browse_button.pack(side=tk.LEFT,anchor='nw', padx=5,expand=True)
         self.browse_dcm_button.pack(side=tk.LEFT,anchor='nw', padx=5,expand=True)
         self.hn_label.pack(side=tk.LEFT,anchor='nw', padx=5,expand=True)
-        
         self.hn_entry.pack(side=tk.LEFT,anchor='nw', padx=5,expand=True)
         self.load_button.pack(side=tk.LEFT,anchor='nw', padx=5,expand=True)
         
@@ -88,10 +89,6 @@ class DICOMViewer:
             self.create_image_window()
         else:
             self.error_label.config(text="No DICOM file selected.")
-
-    
-
-    
 
     def load_dicom_from_directory(self, event):
         # Event handler for pressing Enter in the HN Entry box
@@ -284,7 +281,7 @@ class DICOMViewer:
         # Create buttons
         rect_button = tk.Button(image_window, text="Draw Rectangle", command=lambda: self.activate_rectangle(ax,canvas))
         
-        oval_button = tk.Button(image_window, text="Draw Oval", command=lambda :self.activate_oval(ax,canvas))
+        ellip_button = tk.Button(image_window, text="Draw Ellipse", command=lambda :self.activate_ellip(ax,canvas))
         
         
 
@@ -348,7 +345,7 @@ class DICOMViewer:
         rotate_button_clockwise.pack(side=tk.LEFT, padx=1, pady=5,anchor="nw",expand=True,fill="x")
         rotate_button_counterclockwise.pack(side=tk.LEFT, padx=1, pady=5,anchor="nw",expand=True,fill="x")
         rect_button.pack(side=tk.LEFT, padx=1, pady=5,anchor="nw",expand=True,fill="x")
-        oval_button.pack(side=tk.LEFT, padx=1, pady=5,anchor="nw",expand=True,fill="x")
+        ellip_button.pack(side=tk.LEFT, padx=1, pady=5,anchor="nw",expand=True,fill="x")
         tags_listbox.pack(side=tk.RIGHT, padx=10, pady=10, fill=tk.BOTH, expand=True)
         info_frame.pack(side=tk.RIGHT, padx=10, pady=10, fill=tk.BOTH, expand=True)
         contrast_scale_label.pack(pady=1,padx=1, expand=True)
@@ -573,24 +570,24 @@ class DICOMViewer:
             self.fig.canvas.mpl_disconnect(self.cid_release_straight)
             ax.set_title("")  # Clear the title
             del self.start_point
-    def activate_oval(self, ax, canvas):
+    def activate_ellip(self, ax, canvas):
         # Activate the drawing tool to draw an oval on the image
         canvas.draw()
 
         # Connect the mouse click and release events to the drawing function
-        cid_press = self.fig.canvas.mpl_connect("button_press_event", lambda event: self.oval_on_press(event, ax, canvas))
-        cid_release = self.fig.canvas.mpl_connect("button_release_event", lambda event: self.oval_on_release(event, ax, canvas))
+        cid_press = self.fig.canvas.mpl_connect("button_press_event", lambda event: self.ellip_on_press(event, ax, canvas))
+        cid_release = self.fig.canvas.mpl_connect("button_release_event", lambda event: self.ellip_on_release(event, ax, canvas))
 
         # Store the connection IDs for later disconnection
-        self.cid_press_oval = cid_press
-        self.cid_release_oval = cid_release
+        self.cid_press_ellip = cid_press
+        self.cid_release_ellip = cid_release
 
     # Draw an oval when press and release
-    def oval_on_press(self, event, ax, canvas):
+    def ellip_on_press(self, event, ax, canvas):
         # Record the starting point of the oval
         self.start_point = (event.xdata, event.ydata)
 
-    def oval_on_release(self, event, ax, canvas):
+    def ellip_on_release(self, event, ax, canvas):
         # Draw the oval on the image
         if hasattr(self, 'start_point'):
             end_point = (event.xdata, event.ydata)
@@ -606,10 +603,11 @@ class DICOMViewer:
             canvas.draw()
 
             # Disconnect the drawing tool after drawing the oval
-            self.fig.canvas.mpl_disconnect(self.cid_press_oval)
-            self.fig.canvas.mpl_disconnect(self.cid_release_oval)
+            self.fig.canvas.mpl_disconnect(self.cid_press_ellip)
+            self.fig.canvas.mpl_disconnect(self.cid_release_ellip)
             ax.set_title("")  # Clear the title
             del self.start_point
+
     def activate_rectangle(self, ax, canvas):
         # Activate the drawing tool to draw a rectangle on the image
         canvas.draw()
