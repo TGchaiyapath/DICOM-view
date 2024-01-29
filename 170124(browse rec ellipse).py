@@ -12,9 +12,10 @@ import cv2
 from tkinter import Scale
 
 #today We add the browse .dcm file button in code line 31,50,76-90
-#draw ellipse button in code line 283,347,572-608
-#draw rectangle button in code line
+#draw ellipse button in code line 283,348,572-608
+#draw rectangle button in code line 284,347,611-646
 
+#there is some issue in the freehand drawing of 187-194,
 class DICOMViewer:
     def __init__(self, master):
         self.master = master
