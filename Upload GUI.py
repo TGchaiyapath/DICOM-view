@@ -5,7 +5,7 @@ PositronEmissionTomographyImageStorage,ComputedRadiographyImageStorage,DigitalXR
 DigitalXRayImageStorageForProcessing)
 from tkinter import Tk, Label, Entry, Button, filedialog
 
-
+debug_logger()
 def send_files():
     # Read server IP, port, and selected DICOM files
     server_ip = ip_entry.get()
@@ -28,17 +28,17 @@ def send_files():
     ae.add_requested_context(DigitalXRayImageStorageForPresentation)
     ae.add_requested_context(DigitalXRayImageStorageForProcessing)
 
-
+    assoc = ae.associate(server_ip, server_port)
     for file_path in file_paths:
-        # Read in the selected DICOM dataset
-        ds = dcmread(file_path)
+       
 
         # Associate 
 
-        assoc = ae.associate(server_ip, server_port)
+        
         if assoc.is_established:
             # Use the C-STORE service to send the dataset
-            
+            # Read in the selected DICOM dataset
+            ds = dcmread(file_path)
             status = assoc.send_c_store(ds)
 
             # Check the status of the storage request

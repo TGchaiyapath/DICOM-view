@@ -3,7 +3,7 @@ from pydicom.dataset import Dataset
 from pynetdicom.sop_class import (PatientRootQueryRetrieveInformationModelMove)
 import os
 
-
+debug_logger()
 def handle_store(event):
         """Handle a C-STORE service request"""
         # Nothing fancy, just write to DICOM File Format
